@@ -5,6 +5,7 @@ import swaggerUi from '@fastify/swagger-ui';
 import dotenv from 'dotenv';
 import jwtPlugin from './plugins/jwt';
 import errorHandler from './plugins/errorHandler';
+import rateLimitPlugin from './plugins/rateLimit';
 import { authRoutes } from './modules/auth/auth.route';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
@@ -78,6 +79,9 @@ server.register(cors, {
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
 });
+
+// Register rate limiting
+server.register(rateLimitPlugin);
 
 // Register JWT plugin
 server.register(jwtPlugin);

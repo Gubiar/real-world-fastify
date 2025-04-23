@@ -3,9 +3,20 @@ import { LoginInputType, RegisterInputType } from './auth.schema';
 import { AuthService } from './auth.service';
 import { HttpStatus } from '../../utils/httpStatusCodes';
 import { error, success } from '../../utils/response';
+import { UserService } from '../users/user.service';
+
+// Define error interface
+interface AppError extends Error {
+  code?: string;
+  statusCode?: number;
+}
 
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  private userService: UserService;
+  
+  constructor(private authService: AuthService) {
+    this.userService = new UserService();
+  }
 
   async registerHandler(
     request: FastifyRequest<{ Body: RegisterInputType }>,
@@ -14,15 +25,18 @@ export class AuthController {
     try {
       const user = await this.authService.registerUser(request.body);
       
-      // Remove password from response
-      const { password, ...userWithoutPassword } = user;
+      // Sanitize user data (remove password)
+      const sanitizedUser = this.userService.sanitizeUser(user);
       
-      return success(reply, userWithoutPassword, HttpStatus.CREATED);
-    } catch (err: any) {
+      return success(reply, sanitizedUser, HttpStatus.CREATED);
+    } catch (err: unknown) {
+      const error_msg = err instanceof Error ? err.message : 'Error registering user';
+      const appError = err as AppError;
+      
       return error(
         reply, 
-        err.message || 'Error registering user', 
-        HttpStatus.BAD_REQUEST
+        error_msg, 
+        appError.statusCode || HttpStatus.BAD_REQUEST
       );
     }
   }
@@ -49,17 +63,19 @@ export class AuthController {
         email: user.email
       });
       
-      // Remove password from response
-      const { password: _, ...userWithoutPassword } = user;
+      // Sanitize user data (remove password)
+      const sanitizedUser = this.userService.sanitizeUser(user);
       
       return success(reply, { 
         token,
-        user: userWithoutPassword
+        user: sanitizedUser
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error_msg = err instanceof Error ? err.message : 'Error during login';
+      
       return error(
         reply,
-        err.message || 'Error during login',
+        error_msg,
         HttpStatus.INTERNAL_ERROR
       );
     }

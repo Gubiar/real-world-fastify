@@ -1,49 +1,36 @@
 import { User } from '@prisma/client';
 import { Static } from '@sinclair/typebox';
 import { RegisterInput } from './auth.schema';
-import * as bcrypt from 'bcrypt';
 import { FastifyInstance } from 'fastify';
-import { prisma } from '../../utils/prisma';
+import { UserService } from '../users/user.service';
 
 export class AuthService {
-  constructor(private fastify: FastifyInstance) {}
+  private userService: UserService;
+  
+  constructor(private fastify: FastifyInstance) {
+    this.userService = new UserService();
+  }
 
   async registerUser(input: Static<typeof RegisterInput>): Promise<User> {
-    const { email, password, name } = input;
+    const { email } = input;
     
     // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email }
-    });
+    const existingUser = await this.userService.findByEmail(email);
     
     if (existingUser) {
       throw new Error('User with this email already exists');
     }
     
-    // Hash password
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-    
-    // Create user
-    const user = await prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        name
-      }
-    });
-    
-    return user;
+    // Create user using user service
+    return this.userService.create(input);
   }
   
   async validateUser(email: string, password: string): Promise<User | null> {
-    const user = await prisma.user.findUnique({
-      where: { email }
-    });
+    const user = await this.userService.findByEmail(email);
     
     if (!user) return null;
     
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await this.userService.comparePassword(password, user.password);
     
     if (!isPasswordValid) return null;
     
