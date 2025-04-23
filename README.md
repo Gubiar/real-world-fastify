@@ -358,6 +358,99 @@ For production deployment:
 3. Use a process manager like PM2 or run in a Docker container.
 4. Set up a reverse proxy (Nginx, Apache) for production use.
 
+## Deployment with Docker
+
+This project includes Docker setup for easy deployment. Docker handles all dependencies, database setup, and running the application in an isolated environment.
+
+## Docker Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/)
+- [Docker Compose](https://docs.docker.com/compose/install/)
+
+## Deploying with Docker
+
+You can use the included deployment script:
+
+```bash
+# Make the script executable
+chmod +x deploy.sh
+
+# Deploy with default settings
+./deploy.sh
+
+# Build images before starting
+./deploy.sh --build
+
+# Force recreation of containers
+./deploy.sh --recreate
+
+# Follow logs after starting
+./deploy.sh --logs
+
+# Stop and remove containers
+./deploy.sh --down
+```
+
+Or manually with Docker Compose:
+
+```bash
+# Build and start in detached mode
+docker-compose up -d --build
+
+# View logs
+docker-compose logs -f
+
+# Stop containers
+docker-compose down
+```
+
+## Docker Configuration
+
+The Docker setup includes:
+
+- **Multi-stage build**: optimized for smaller production images
+- **PostgreSQL database**: pre-configured and ready to use
+- **Automatic migrations**: runs Prisma migrations on startup
+- **Environment variables**: configurable via docker-compose.yml
+- **Volume persistence**: database data persists between restarts
+- **Security**: runs as non-root user
+
+## Production Deployment Considerations
+
+For production deployment:
+
+1. Set a strong JWT_SECRET environment variable
+2. Use a proper domain in CORS_ORIGIN
+3. Consider using Docker Swarm or Kubernetes for clustering
+4. Set up a reverse proxy (like Nginx) for SSL termination
+5. Use a dedicated database service instead of the Docker container for important data
+
+## Deployment with Docker in WSL
+
+For Windows users using WSL (Windows Subsystem for Linux), we provide a specialized deployment script with optimizations for WSL environments.
+
+```bash
+# Make the script executable
+chmod +x wsl-deploy.sh
+
+# Deploy with extended timeouts and optimizations for WSL
+./wsl-deploy.sh --pull --build
+
+# View logs
+./wsl-deploy.sh --logs
+```
+
+### WSL Performance Tips
+
+When running Docker in WSL:
+
+1. **Store project files in the WSL filesystem** (not `/mnt/c/...`) for better performance
+2. **Use WSL 2** rather than WSL 1 for improved virtualization
+3. **Install Docker Desktop for Windows** with WSL 2 integration
+4. **Increase Docker timeouts** for slower network connections
+
+For more troubleshooting help, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+
 ## Contributing
 
 1. Fork the repository

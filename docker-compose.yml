@@ -1,0 +1,47 @@
+# Docker Compose configuration for Fastify Auth API
+# This file defines the services, networks, and volumes for the application
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fastify-auth-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOST=0.0.0.0
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/fastify_db?schema=public
+      - JWT_SECRET=${JWT_SECRET:-super-secret-jwt-key-change-in-production}
+      - JWT_EXPIRES_IN=1d
+      - CORS_ORIGIN=*
+      - LOG_LEVEL=info
+    depends_on:
+      - db
+    networks:
+      - app-network
+
+  db:
+    image: postgres:16.0-alpine
+    container_name: fastify-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=fastify_db
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
