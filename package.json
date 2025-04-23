@@ -1,0 +1,50 @@
+{
+  "name": "fastify-auth-boilerplate",
+  "version": "1.0.0",
+  "description": "Production-ready Fastify boilerplate with authentication",
+  "main": "dist/app.js",
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only src/app.ts",
+    "build": "tsc",
+    "start": "node dist/app.js",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "ts-node prisma/seed.ts"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
+  },
+  "dependencies": {
+    "@fastify/jwt": "^9.1.0",
+    "@fastify/swagger": "^9.5.0",
+    "@fastify/swagger-ui": "^5.2.2",
+    "@fastify/type-provider-typebox": "^5.1.0",
+    "@prisma/client": "^6.6.0",
+    "@sinclair/typebox": "^0.34.33",
+    "bcrypt": "5.1.1",
+    "dotenv": "^16.5.0",
+    "fastify": "^5.3.2",
+    "node-gyp": "^11.2.0",
+    "pino": "^9.6.0"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/node": "^22.14.1",
+    "@typescript-eslint/eslint-plugin": "^8.31.0",
+    "@typescript-eslint/parser": "^8.31.0",
+    "eslint": "^9.25.1",
+    "prettier": "^3.5.3",
+    "prisma": "^6.6.0",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.8.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "esbuild",
+      "prisma",
+      "bcrypt"
+    ]
+  }
+}
