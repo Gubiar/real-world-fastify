@@ -1,10 +1,9 @@
-import { PrismaClient, User } from '@prisma/client';
+import { User } from '@prisma/client';
 import { Static } from '@sinclair/typebox';
 import { RegisterInput } from './auth.schema';
 import * as bcrypt from 'bcrypt';
 import { FastifyInstance } from 'fastify';
-
-const prisma = new PrismaClient();
+import { prisma } from '../../utils/prisma';
 
 export class AuthService {
   constructor(private fastify: FastifyInstance) {}
