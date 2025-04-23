@@ -6,7 +6,7 @@ import dotenv from 'dotenv';
 import jwtPlugin from './plugins/jwt';
 import errorHandler from './plugins/errorHandler';
 import rateLimitPlugin from './plugins/rateLimit';
-import { authRoutes } from './modules/auth/auth.route';
+import { authRouter } from './modules/auth/auth.route';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import { disconnectPrisma } from './utils/prisma';
@@ -27,7 +27,33 @@ if (process.env['NODE_ENV'] === 'production') {
 
 // Create Fastify server
 const server = fastify({
-  logger: true
+  logger: {
+    level: process.env['LOG_LEVEL'] || 'info',
+    serializers: {
+      req(request) {
+        return {
+          method: request.method,
+          url: request.url,
+          parameters: request.params,
+          // Don't log headers with authorization or sensitive data
+          headers: {
+            ...request.headers,
+            authorization: request.headers.authorization ? '[Redacted]' : undefined
+          }
+        };
+      }
+    },
+    // Use different logging formats for development vs production
+    ...(process.env['NODE_ENV'] !== 'production' ? {
+      transport: {
+        target: 'pino-pretty',
+        options: {
+          translateTime: 'HH:MM:ss Z',
+          ignore: 'pid,hostname'
+        }
+      }
+    } : {})
+  }
 }).withTypeProvider<TypeBoxTypeProvider>();
 
 // Register error handler (should be first)
@@ -87,7 +113,7 @@ server.register(rateLimitPlugin);
 server.register(jwtPlugin);
 
 // Register routes
-server.register(authRoutes, { prefix: '/api/auth' });
+authRouter.registerWithPrefix(server, '/api/auth');
 
 // Health check route
 server.get('/health', async () => {
