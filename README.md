@@ -67,7 +67,7 @@ A production-ready Fastify boilerplate with TypeScript, Prisma, JWT authenticati
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/real-world-fastify.git
+git clone https://github.com/Gubiar/real-world-fastify.git
 cd real-world-fastify
 ```
 
