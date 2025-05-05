@@ -182,13 +182,11 @@ export const FeatureResponse = Type.Object({
 
 ```typescript
 // src/modules/your-feature/feature.service.ts
-import { prisma } from "../../utils/prisma";
+import { FastifyInstance } from "fastify";
 
-export class FeatureService {
-  async someMethod() {
-    // Implement your business logic
-    return await prisma.someModel.findMany();
-  }
+export async function someMethod(server: FastifyInstance) {
+  // Implement your business logic
+  return await server.prisma.someModel.findMany();
 }
 ```
 
@@ -197,21 +195,17 @@ export class FeatureService {
 ```typescript
 // src/modules/your-feature/feature.controller.ts
 import { FastifyReply, FastifyRequest } from "fastify";
-import { FeatureService } from "./feature.service";
 import { FeatureInputType } from "./feature.schema";
+import { someMethod } from "./feature.service";
 import { success, error } from "../../utils/response";
 import { HttpStatus } from "../../utils/httpStatusCodes";
 
-export class FeatureController {
-  constructor(private featureService: FeatureService) {}
-
-  async handleRequest(request: FastifyRequest<{ Body: FeatureInputType }>, reply: FastifyReply) {
-    try {
-      const result = await this.featureService.someMethod();
-      return success(reply, result);
-    } catch (err) {
-      return error(reply, "Error message", HttpStatus.INTERNAL_ERROR);
-    }
+export async function handleRequest(request: FastifyRequest<{ Body: FeatureInputType }>, reply: FastifyReply) {
+  try {
+    const result = await someMethod(request.server);
+    return success(reply, result);
+  } catch (err) {
+    return error(reply, "Error message", HttpStatus.INTERNAL_ERROR);
   }
 }
 ```
@@ -222,54 +216,44 @@ export class FeatureController {
 // src/modules/your-feature/feature.route.ts
 import { FastifyInstance } from "fastify";
 import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
-import { FeatureController } from "./feature.controller";
-import { FeatureService } from "./feature.service";
+import { handleRequest } from "./feature.controller";
 import { FeatureInput, FeatureResponse } from "./feature.schema";
-import { BaseRouter } from "../base.route";
 
-export class FeatureRouter extends BaseRouter {
-  private featureController: FeatureController;
+export function registerFeatureRoutes(server: FastifyInstance, prefix: string): void {
+  server.register(
+    async (instance) => {
+      const fastifyTypebox = instance.withTypeProvider<TypeBoxTypeProvider>();
 
-  constructor() {
-    super();
-    const featureService = new FeatureService();
-    this.featureController = new FeatureController(featureService);
-  }
-
-  async register(server: FastifyInstance): Promise<void> {
-    const fastifyTypebox = server.withTypeProvider<TypeBoxTypeProvider>();
-
-    fastifyTypebox.post(
-      "/endpoint",
-      {
-        schema: {
-          body: FeatureInput,
-          response: {
-            200: FeatureResponse,
+      fastifyTypebox.post(
+        "/endpoint",
+        {
+          schema: {
+            body: FeatureInput,
+            response: {
+              200: FeatureResponse,
+            },
+            description: "Endpoint description",
+            tags: ["feature-tag"],
           },
-          description: "Endpoint description",
-          tags: ["feature-tag"],
         },
-      },
-      this.featureController.handleRequest.bind(this.featureController)
-    );
+        handleRequest
+      );
 
-    // Add more routes as needed
-  }
+      // Add more routes as needed
+    },
+    { prefix }
+  );
 }
-
-// Export a singleton instance
-export const featureRouter = new FeatureRouter();
 ```
 
 6. **Register your router** in `app.ts`:
 
 ```typescript
 // In src/app.ts
-import { featureRouter } from "./modules/your-feature/feature.route";
+import { registerFeatureRoutes } from "./modules/your-feature/feature.route";
 
 // Register routes
-featureRouter.registerWithPrefix(server, "/api/your-feature");
+registerFeatureRoutes(server, "/api/your-feature");
 ```
 
 ## Testing
@@ -307,14 +291,23 @@ Example:
 import { test, expect, describe, beforeAll, afterAll } from "@jest/globals";
 import { FastifyInstance } from "fastify";
 import fastify from "fastify";
-import { yourRouter } from "../../src/modules/your-feature/feature.route";
+import { registerFeatureRoutes } from "../../src/modules/your-feature/feature.route";
+import prismaPlugin from "../../src/plugins/prisma";
+import jwtPlugin from "../../src/plugins/jwt";
 
 describe("Your Feature", () => {
   let app: FastifyInstance;
 
   beforeAll(async () => {
     app = fastify();
-    yourRouter.registerWithPrefix(app, "/api/your-feature");
+
+    // Register plugins
+    await app.register(prismaPlugin);
+    await app.register(jwtPlugin);
+
+    // Register routes
+    registerFeatureRoutes(app, "/api/your-feature");
+
     await app.ready();
   });
 

@@ -6,10 +6,10 @@ import dotenv from 'dotenv';
 import jwtPlugin from './plugins/jwt';
 import errorHandler from './plugins/errorHandler';
 import rateLimitPlugin from './plugins/rateLimit';
-import { authRouter } from './modules/auth/auth.route';
+import prismaPlugin from './plugins/prisma';
+import { registerAuthRoutes } from './modules/auth/auth.route';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
-import { disconnectPrisma } from './utils/prisma';
 
 // Load environment variables
 dotenv.config();
@@ -58,6 +58,9 @@ const server = fastify({
 
 // Register error handler (should be first)
 server.register(errorHandler);
+
+// Register Prisma plugin
+server.register(prismaPlugin);
 
 // Register Swagger
 server.register(swagger, {
@@ -113,7 +116,7 @@ server.register(rateLimitPlugin);
 server.register(jwtPlugin);
 
 // Register routes
-authRouter.registerWithPrefix(server, '/api/auth');
+registerAuthRoutes(server, '/api/auth');
 
 // Health check route
 server.get('/health', async () => {
@@ -123,10 +126,7 @@ server.get('/health', async () => {
 // Graceful shutdown
 const closeGracefully = async (signal: string) => {
   server.log.info(`Received signal ${signal}, shutting down...`);
-  
   await server.close();
-  await disconnectPrisma();
-  
   process.exit(0);
 };
 
