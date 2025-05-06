@@ -26,17 +26,16 @@ src/
 │   │   ├── auth.route.ts       # Route definitions
 │   │   ├── auth.schema.ts      # Request/response schemas
 │   │   └── auth.service.ts     # Business logic
-│   ├── users/         # User management module
-│   │   └── user.service.ts     # User-related operations
-│   └── base.route.ts  # Base router class (extended by feature routers)
+│   └── users/         # User management module
+│       └── user.service.ts     # User-related operations
 ├── plugins/           # Fastify plugins
 │   ├── jwt.ts         # JWT authentication plugin
+│   ├── prisma.ts      # Prisma database plugin
 │   ├── errorHandler.ts # Global error handler
 │   └── rateLimit.ts   # Rate limiting plugin
 ├── utils/             # Utility functions
 │   ├── httpStatusCodes.ts # HTTP status code enum
 │   ├── logger.ts      # Logger configuration
-│   ├── prisma.ts      # Prisma client singleton
 │   └── response.ts    # Standardized response helpers
 └── app.ts             # Application entry point
 ```
@@ -44,33 +43,51 @@ src/
 ## Key Design Patterns
 
 1. **Module-based Architecture**: Features are organized in self-contained modules
-2. **Separation of Concerns**: Controller, Service, Schema, Router pattern
-3. **Dependency Injection**: Services injected into controllers
-4. **Repository Pattern**: Via Prisma client for database operations
-5. **Singleton Pattern**: For shared resources like Prisma client
+2. **Separation of Concerns**: Controller, Service, Schema patterns
+3. **Functional Programming**: Pure functions with explicit dependencies
+4. **Dependency Injection**: Via Fastify server instance
+5. **Plugin Pattern**: For shared resources like Prisma client
 6. **Factory Pattern**: For standardized response objects
 
 ## Core Abstractions
 
-### BaseRouter
-The `BaseRouter` abstract class serves as the foundation for all route modules:
+### Fastify Plugins
+
+The project uses Fastify's plugin system to extend the server's functionality:
 
 ```typescript
-export abstract class BaseRouter {
-  abstract register(server: FastifyInstance): Promise<void> | void;
+// src/plugins/prisma.ts
+const prismaPlugin: FastifyPluginAsync = async (fastify: FastifyInstance) => {
+  const prisma = new PrismaClient({
+    log: process.env['NODE_ENV'] === 'development' 
+      ? ['query', 'error', 'warn'] 
+      : ['error'],
+  });
+
+  await prisma.$connect();
+  fastify.decorate('prisma', prisma);
   
-  registerWithPrefix(server: FastifyInstance, prefix: string): void {
-    server.register(
-      async (instance) => {
-        await Promise.resolve(this.register(instance));
-      },
-      { prefix }
-    );
-  }
-}
+  fastify.addHook('onClose', async (instance) => {
+    await instance.prisma.$disconnect();
+  });
+};
+
+export default fp(prismaPlugin);
 ```
 
-All feature routers extend this class to ensure a consistent API structure.
+### Route Registration
+
+Routes are registered using a functional approach:
+
+```typescript
+export function registerAuthRoutes(server: FastifyInstance, prefix: string): void {
+  server.register(async (instance) => {
+    // Register route handlers
+    instance.post('/register', { schema: registerSchema }, registerHandler);
+    instance.post('/login', { schema: loginSchema }, loginHandler);
+  }, { prefix });
+}
+```
 
 ### Response Utilities
 The project uses standardized response helpers:
@@ -108,25 +125,33 @@ interface ErrorResponse {
 
 ## Database Access
 
-The project uses Prisma ORM with a singleton client pattern:
+The project uses Prisma ORM with a plugin-based approach:
 
 ```typescript
-// src/utils/prisma.ts
-const globalForPrisma = global as unknown as { prisma: PrismaClient };
-
-export const prisma = globalForPrisma.prisma || new PrismaClient({
-  log: process.env.NODE_ENV === 'development' 
-    ? ['query', 'error', 'warn'] 
-    : ['error'],
-});
-
-// In development, don't create multiple connections
-if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma = prisma;
+// src/plugins/prisma.ts
+declare module 'fastify' {
+  interface FastifyInstance {
+    prisma: PrismaClient;
+  }
 }
+
+const prismaPlugin: FastifyPluginAsync = async (fastify: FastifyInstance) => {
+  const prisma = new PrismaClient({
+    log: process.env['NODE_ENV'] === 'development' 
+      ? ['query', 'error', 'warn'] 
+      : ['error'],
+  });
+
+  await prisma.$connect();
+  fastify.decorate('prisma', prisma);
+  
+  fastify.addHook('onClose', async (instance) => {
+    await instance.prisma.$disconnect();
+  });
+};
 ```
 
-This approach prevents connection pool exhaustion in development.
+This approach ensures the Prisma client is available throughout the application via the Fastify server instance, preventing connection pool exhaustion.
 
 ## Step-by-Step Guide to Adding New Features
 
@@ -178,66 +203,63 @@ export const ProductsResponse = Type.Object({
 });
 ```
 
-### 3. Create a Service
+### 3. Create Service Functions
 
 Create a service file (e.g., `product.service.ts`) to handle business logic:
 
 ```typescript
 // src/modules/products/product.service.ts
-import { Product } from '@prisma/client';
-import { prisma } from '../../utils/prisma';
+import { FastifyInstance } from 'fastify';
 import { ProductInputType } from './product.schema';
 
-export class ProductService {
-  async findAll(): Promise<Product[]> {
-    return prisma.product.findMany();
-  }
-  
-  async findById(id: number): Promise<Product | null> {
-    return prisma.product.findUnique({
-      where: { id }
-    });
-  }
-  
-  async create(data: ProductInputType): Promise<Product> {
-    return prisma.product.create({
+export async function findAll(server: FastifyInstance) {
+  return await server.prisma.product.findMany();
+}
+
+export async function findById(server: FastifyInstance, id: number) {
+  return await server.prisma.product.findUnique({
+    where: { id }
+  });
+}
+
+export async function create(server: FastifyInstance, data: ProductInputType) {
+  return await server.prisma.product.create({
+    data
+  });
+}
+
+export async function update(server: FastifyInstance, id: number, data: ProductInputType) {
+  try {
+    return await server.prisma.product.update({
+      where: { id },
       data
     });
+  } catch (error) {
+    return null;
   }
-  
-  async update(id: number, data: ProductInputType): Promise<Product | null> {
-    try {
-      return await prisma.product.update({
-        where: { id },
-        data
-      });
-    } catch (error) {
-      return null;
-    }
-  }
-  
-  async delete(id: number): Promise<boolean> {
-    try {
-      await prisma.product.delete({
-        where: { id }
-      });
-      return true;
-    } catch (error) {
-      return false;
-    }
+}
+
+export async function remove(server: FastifyInstance, id: number) {
+  try {
+    await server.prisma.product.delete({
+      where: { id }
+    });
+    return true;
+  } catch (error) {
+    return false;
   }
 }
 ```
 
-### 4. Create a Controller
+### 4. Create Controller Functions
 
 Create a controller file (e.g., `product.controller.ts`) to handle HTTP requests:
 
 ```typescript
 // src/modules/products/product.controller.ts
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { ProductService } from './product.service';
 import { ProductInputType } from './product.schema';
+import { findAll, findById, create, update, remove } from './product.service';
 import { HttpStatus } from '../../utils/httpStatusCodes';
 import { error, success } from '../../utils/response';
 
@@ -247,144 +269,130 @@ interface AppError extends Error {
   statusCode?: number;
 }
 
-export class ProductController {
-  constructor(private productService: ProductService) {}
-
-  async getAllProducts(
-    request: FastifyRequest,
-    reply: FastifyReply
-  ) {
-    try {
-      const products = await this.productService.findAll();
-      return success(reply, products);
-    } catch (err: unknown) {
-      const error_msg = err instanceof Error ? err.message : 'Error retrieving products';
-      return error(reply, error_msg, HttpStatus.INTERNAL_ERROR);
-    }
+export async function getAllProducts(
+  request: FastifyRequest,
+  reply: FastifyReply
+) {
+  try {
+    const products = await findAll(request.server);
+    return success(reply, products);
+  } catch (err: unknown) {
+    const error_msg = err instanceof Error ? err.message : 'Error retrieving products';
+    return error(reply, error_msg, HttpStatus.INTERNAL_ERROR);
   }
+}
 
-  async getProductById(
-    request: FastifyRequest<{ Params: { id: string } }>,
-    reply: FastifyReply
-  ) {
-    try {
-      const id = parseInt(request.params.id, 10);
-      if (isNaN(id)) {
-        return error(reply, 'Invalid product ID', HttpStatus.BAD_REQUEST);
-      }
-      
-      const product = await this.productService.findById(id);
-      
-      if (!product) {
-        return error(reply, 'Product not found', HttpStatus.NOT_FOUND);
-      }
-      
-      return success(reply, product);
-    } catch (err: unknown) {
-      const error_msg = err instanceof Error ? err.message : 'Error retrieving product';
-      return error(reply, error_msg, HttpStatus.INTERNAL_ERROR);
+export async function getProductById(
+  request: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply
+) {
+  try {
+    const id = parseInt(request.params.id, 10);
+    if (isNaN(id)) {
+      return error(reply, 'Invalid product ID', HttpStatus.BAD_REQUEST);
     }
+    
+    const product = await findById(request.server, id);
+    
+    if (!product) {
+      return error(reply, 'Product not found', HttpStatus.NOT_FOUND);
+    }
+    
+    return success(reply, product);
+  } catch (err: unknown) {
+    const error_msg = err instanceof Error ? err.message : 'Error retrieving product';
+    return error(reply, error_msg, HttpStatus.INTERNAL_ERROR);
   }
+}
 
-  async createProduct(
-    request: FastifyRequest<{ Body: ProductInputType }>,
-    reply: FastifyReply
-  ) {
-    try {
-      const product = await this.productService.create(request.body);
-      return success(reply, product, HttpStatus.CREATED);
-    } catch (err: unknown) {
-      const error_msg = err instanceof Error ? err.message : 'Error creating product';
-      const appError = err as AppError;
-      
-      if (appError.code === 'P2002') {
-        return error(reply, 'A product with this name already exists', HttpStatus.BAD_REQUEST);
-      }
-      
-      return error(
-        reply, 
-        error_msg, 
-        appError.statusCode || HttpStatus.INTERNAL_ERROR
-      );
+export async function createProduct(
+  request: FastifyRequest<{ Body: ProductInputType }>,
+  reply: FastifyReply
+) {
+  try {
+    const product = await create(request.server, request.body);
+    return success(reply, product, HttpStatus.CREATED);
+  } catch (err: unknown) {
+    const error_msg = err instanceof Error ? err.message : 'Error creating product';
+    const appError = err as AppError;
+    
+    if (appError.code === 'P2002') {
+      return error(reply, 'A product with this name already exists', HttpStatus.BAD_REQUEST);
     }
+    
+    return error(
+      reply, 
+      error_msg, 
+      appError.statusCode || HttpStatus.INTERNAL_ERROR
+    );
   }
+}
 
-  async updateProduct(
-    request: FastifyRequest<{ 
-      Params: { id: string },
-      Body: ProductInputType
-    }>,
-    reply: FastifyReply
-  ) {
-    try {
-      const id = parseInt(request.params.id, 10);
-      if (isNaN(id)) {
-        return error(reply, 'Invalid product ID', HttpStatus.BAD_REQUEST);
-      }
-      
-      const product = await this.productService.update(id, request.body);
-      
-      if (!product) {
-        return error(reply, 'Product not found', HttpStatus.NOT_FOUND);
-      }
-      
-      return success(reply, product);
-    } catch (err: unknown) {
-      const error_msg = err instanceof Error ? err.message : 'Error updating product';
-      return error(reply, error_msg, HttpStatus.INTERNAL_ERROR);
+export async function updateProduct(
+  request: FastifyRequest<{ 
+    Params: { id: string },
+    Body: ProductInputType
+  }>,
+  reply: FastifyReply
+) {
+  try {
+    const id = parseInt(request.params.id, 10);
+    if (isNaN(id)) {
+      return error(reply, 'Invalid product ID', HttpStatus.BAD_REQUEST);
     }
+    
+    const product = await update(request.server, id, request.body);
+    
+    if (!product) {
+      return error(reply, 'Product not found', HttpStatus.NOT_FOUND);
+    }
+    
+    return success(reply, product);
+  } catch (err: unknown) {
+    const error_msg = err instanceof Error ? err.message : 'Error updating product';
+    return error(reply, error_msg, HttpStatus.INTERNAL_ERROR);
   }
+}
 
-  async deleteProduct(
-    request: FastifyRequest<{ Params: { id: string } }>,
-    reply: FastifyReply
-  ) {
-    try {
-      const id = parseInt(request.params.id, 10);
-      if (isNaN(id)) {
-        return error(reply, 'Invalid product ID', HttpStatus.BAD_REQUEST);
-      }
-      
-      const success = await this.productService.delete(id);
-      
-      if (!success) {
-        return error(reply, 'Product not found', HttpStatus.NOT_FOUND);
-      }
-      
-      return reply.code(HttpStatus.NO_CONTENT).send();
-    } catch (err: unknown) {
-      const error_msg = err instanceof Error ? err.message : 'Error deleting product';
-      return error(reply, error_msg, HttpStatus.INTERNAL_ERROR);
+export async function deleteProduct(
+  request: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply
+) {
+  try {
+    const id = parseInt(request.params.id, 10);
+    if (isNaN(id)) {
+      return error(reply, 'Invalid product ID', HttpStatus.BAD_REQUEST);
     }
+    
+    const success = await remove(request.server, id);
+    
+    if (!success) {
+      return error(reply, 'Product not found', HttpStatus.NOT_FOUND);
+    }
+    
+    return reply.code(HttpStatus.NO_CONTENT).send();
+  } catch (err: unknown) {
+    const error_msg = err instanceof Error ? err.message : 'Error deleting product';
+    return error(reply, error_msg, HttpStatus.INTERNAL_ERROR);
   }
 }
 ```
 
-### 5. Create a Router
+### 5. Create Route Registration
 
-Create a router file (e.g., `product.route.ts`) that extends the `BaseRouter`:
+Create a router file (e.g., `product.route.ts`):
 
 ```typescript
 // src/modules/products/product.route.ts
 import { FastifyInstance } from 'fastify';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import { ProductController } from './product.controller';
-import { ProductService } from './product.service';
+import { getAllProducts, getProductById, createProduct, updateProduct, deleteProduct } from './product.controller';
 import { ProductInput, ProductResponse, ProductsResponse } from './product.schema';
-import { BaseRouter } from '../base.route';
 import { Type } from '@sinclair/typebox';
 
-export class ProductRouter extends BaseRouter {
-  private productController: ProductController;
-  
-  constructor() {
-    super();
-    const productService = new ProductService();
-    this.productController = new ProductController(productService);
-  }
-  
-  async register(server: FastifyInstance): Promise<void> {
-    const fastifyTypebox = server.withTypeProvider<TypeBoxTypeProvider>();
+export function registerProductRoutes(server: FastifyInstance, prefix: string): void {
+  server.register(async (instance) => {
+    const fastifyTypebox = instance.withTypeProvider<TypeBoxTypeProvider>();
 
     // GET all products
     fastifyTypebox.get(
@@ -398,7 +406,7 @@ export class ProductRouter extends BaseRouter {
           tags: ['products']
         }
       },
-      this.productController.getAllProducts.bind(this.productController)
+      getAllProducts
     );
     
     // GET product by ID
@@ -416,14 +424,14 @@ export class ProductRouter extends BaseRouter {
           tags: ['products']
         }
       },
-      this.productController.getProductById.bind(this.productController)
+      getProductById
     );
     
     // CREATE product - requires authentication
     fastifyTypebox.post(
       '/',
       {
-        preHandler: server.authenticate,
+        preHandler: instance.authenticate,
         schema: {
           body: ProductInput,
           response: {
@@ -434,14 +442,14 @@ export class ProductRouter extends BaseRouter {
           security: [{ bearerAuth: [] }]
         }
       },
-      this.productController.createProduct.bind(this.productController)
+      createProduct
     );
     
     // UPDATE product - requires authentication
     fastifyTypebox.put(
       '/:id',
       {
-        preHandler: server.authenticate,
+        preHandler: instance.authenticate,
         schema: {
           params: Type.Object({
             id: Type.String()
@@ -455,14 +463,14 @@ export class ProductRouter extends BaseRouter {
           security: [{ bearerAuth: [] }]
         }
       },
-      this.productController.updateProduct.bind(this.productController)
+      updateProduct
     );
     
     // DELETE product - requires authentication
     fastifyTypebox.delete(
       '/:id',
       {
-        preHandler: server.authenticate,
+        preHandler: instance.authenticate,
         schema: {
           params: Type.Object({
             id: Type.String()
@@ -475,13 +483,10 @@ export class ProductRouter extends BaseRouter {
           security: [{ bearerAuth: [] }]
         }
       },
-      this.productController.deleteProduct.bind(this.productController)
+      deleteProduct
     );
-  }
+  }, { prefix });
 }
-
-// Export a singleton instance
-export const productRouter = new ProductRouter();
 ```
 
 ### 6. Update Prisma Schema
@@ -508,16 +513,16 @@ Then run the migration:
 pnpm db:migrate
 ```
 
-### 7. Register the Router
+### 7. Register the Routes
 
 Register the new router in `app.ts`:
 
 ```typescript
 // src/app.ts
-import { productRouter } from './modules/products/product.route';
+import { registerProductRoutes } from './modules/products/product.route';
 
 // Register routes
-productRouter.registerWithPrefix(server, '/api/products');
+registerProductRoutes(server, '/api/products');
 ```
 
 ### 8. Create Tests
@@ -530,9 +535,9 @@ import { test, expect, describe, beforeAll, afterAll } from '@jest/globals';
 import { FastifyInstance } from 'fastify';
 import fastify from 'fastify';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import { productRouter } from '../../src/modules/products/product.route';
-import { prisma } from '../../src/utils/prisma';
-import jwt from '../../src/plugins/jwt';
+import { registerProductRoutes } from '../../src/modules/products/product.route';
+import jwtPlugin from '../../src/plugins/jwt';
+import prismaPlugin from '../../src/plugins/prisma';
 
 describe('Product Module', () => {
   let app: FastifyInstance;
@@ -544,11 +549,12 @@ describe('Product Module', () => {
       logger: false
     }).withTypeProvider<TypeBoxTypeProvider>();
     
-    // Register JWT plugin for authentication
-    await app.register(jwt);
+    // Register plugins
+    await app.register(prismaPlugin);
+    await app.register(jwtPlugin);
     
     // Register routes
-    productRouter.registerWithPrefix(app, '/api/products');
+    registerProductRoutes(app, '/api/products');
     
     // Add authentication route for test
     app.post('/api/auth/login', async () => {
@@ -557,7 +563,7 @@ describe('Product Module', () => {
     });
     
     // Clean test database
-    await prisma.product.deleteMany();
+    await app.prisma.product.deleteMany();
     
     await app.ready();
     
@@ -616,15 +622,14 @@ describe('Product Module', () => {
 
 1. **Naming Conventions**:
    - Files: `kebab-case.ts` (e.g., `user-profile.service.ts`)
-   - Classes: `PascalCase` (e.g., `UserProfileService`)
-   - Variables/Methods: `camelCase` (e.g., `getUserProfile`)
+   - Functions: `camelCase` (e.g., `getUserProfile`)
    - Constants: `UPPER_SNAKE_CASE` (e.g., `MAX_UPLOAD_SIZE`)
 
 2. **Code Organization**:
-   - Always follow the module pattern (controller, service, schema, router)
+   - Always follow the module pattern (controller, service, schema, route)
    - Keep related functionality together in the same module
    - Use the existing utility functions for responses
-   - Always extend `BaseRouter` for new route modules
+   - Always use explicit function parameters for dependencies
 
 3. **Request/Response Formats**:
    - All responses should use the `success` or `error` helpers
@@ -643,10 +648,10 @@ describe('Product Module', () => {
    - Don't store sensitive data in JWT tokens
 
 6. **Database Access**:
-   - Always use the shared Prisma instance from `src/utils/prisma.ts`
+   - Always use the server.prisma instance injected by the plugin
+   - Use await with all async database calls to preserve stack traces
    - Use transactions for operations that modify multiple records
    - Include proper error handling for database operations
-   - Follow the repository pattern within services
 
 7. **Security Practices**:
    - Validate all input data with TypeBox schemas
@@ -721,7 +726,7 @@ When extending this project, follow these guidelines:
 
 1. **New Features**:
    - Always create a new module in `src/modules/`
-   - Follow the existing patterns (controller, service, schema, router)
+   - Follow the functional approach pattern (controller, service, schema, route)
    - Register the router in `app.ts`
    - Add appropriate tests
 
@@ -745,6 +750,8 @@ When extending this project, follow these guidelines:
    - Follow ESLint rules
    - Write comprehensive tests
    - Document complex logic
+   - Use pure functions with explicit dependencies
+   - Always use `await` with promises to maintain stack traces
 
 This project is designed to be extended while maintaining consistency, security, and performance. Always follow the established patterns and best practices.
 

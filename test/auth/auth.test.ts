@@ -2,9 +2,9 @@ import { test, expect, describe, beforeAll, afterAll } from '@jest/globals';
 import { FastifyInstance } from 'fastify';
 import fastify from 'fastify';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import { authRouter } from '../../src/modules/auth/auth.route';
-import { prisma } from '../../src/utils/prisma';
-import jwt from '../../src/plugins/jwt';
+import { registerAuthRoutes } from '../../src/modules/auth/auth.route';
+import prismaPlugin from '../../src/plugins/prisma';
+import jwtPlugin from '../../src/plugins/jwt';
 
 describe('Auth Module', () => {
   let app: FastifyInstance;
@@ -16,11 +16,14 @@ describe('Auth Module', () => {
       logger: false
     }).withTypeProvider<TypeBoxTypeProvider>();
     
+    // Register Prisma plugin
+    await app.register(prismaPlugin);
+    
     // Register JWT plugin which is required for authentication
-    await app.register(jwt);
+    await app.register(jwtPlugin);
     
     // Register routes
-    authRouter.registerWithPrefix(app, '/api/auth');
+    registerAuthRoutes(app, '/api/auth');
     
     // Add a protected route for testing JWT
     app.get('/protected', {
@@ -30,7 +33,7 @@ describe('Auth Module', () => {
     });
     
     // Clean test database
-    await prisma.user.deleteMany();
+    await app.prisma.user.deleteMany();
     
     await app.ready();
   });

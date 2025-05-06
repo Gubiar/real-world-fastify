@@ -1,26 +1,18 @@
 import { FastifyInstance } from 'fastify';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import { AuthController } from './auth.controller';
-import { AuthService } from './auth.service';
+import { registerHandler, loginHandler } from './auth.controller';
 import { LoginInput, LoginResponse, RegisterInput, RegisterResponse } from './auth.schema';
-import { BaseRouter } from '../base.route';
 
-export class AuthRouter extends BaseRouter {
-  private authController: AuthController;
-  
-  constructor() {
-    super();
-    const authService = new AuthService(null as any); // Will be set in register method
-    this.authController = new AuthController(authService);
-  }
-  
-  async register(server: FastifyInstance): Promise<void> {
-    // Re-initialize with proper server instance for JWT access
-    const authService = new AuthService(server);
-    this.authController = new AuthController(authService);
-    
+/**
+ * Register auth routes
+ * 
+ * @param server - Fastify server instance
+ * @param prefix - Route prefix
+ */
+export function registerAuthRoutes(server: FastifyInstance, prefix: string): void {
+  server.register(async (instance) => {
     // Use TypeBox for schema validation
-    const fastifyTypebox = server.withTypeProvider<TypeBoxTypeProvider>();
+    const fastifyTypebox = instance.withTypeProvider<TypeBoxTypeProvider>();
 
     // Register routes
     fastifyTypebox.post(
@@ -35,7 +27,7 @@ export class AuthRouter extends BaseRouter {
           tags: ['authentication']
         }
       },
-      this.authController.registerHandler.bind(this.authController)
+      registerHandler
     );
 
     fastifyTypebox.post(
@@ -50,10 +42,7 @@ export class AuthRouter extends BaseRouter {
           tags: ['authentication']
         }
       },
-      this.authController.loginHandler.bind(this.authController)
+      loginHandler
     );
-  }
-}
-
-// Export a singleton instance
-export const authRouter = new AuthRouter(); 
+  }, { prefix });
+} 

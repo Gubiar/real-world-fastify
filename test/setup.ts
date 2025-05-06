@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { disconnectPrisma, prisma } from '../src/utils/prisma';
+import { PrismaClient } from '@prisma/client';
 import { afterAll, beforeAll } from '@jest/globals';
 
 // Set test environment
@@ -9,12 +9,20 @@ process.env.LOG_LEVEL = 'error';
 // For tests, we use an in-memory JWT secret
 process.env.JWT_SECRET = 'test-jwt-secret-for-testing-only';
 
+// Create a Prisma client for tests
+const prisma = new PrismaClient({
+  log: ['error'],
+});
+
 // Create a test database setup
 beforeAll(async () => {
   // Confirm we're in a test environment to avoid accidentally affecting production data
   if (process.env.NODE_ENV !== 'test') {
     throw new Error('Tests must be run with NODE_ENV=test');
   }
+
+  // Connect to the database
+  await prisma.$connect();
 
   // Clean up database before tests
   try {
@@ -28,5 +36,5 @@ beforeAll(async () => {
 
 // Clean up resources after all tests
 afterAll(async () => {
-  await disconnectPrisma();
+  await prisma.$disconnect();
 }); 
