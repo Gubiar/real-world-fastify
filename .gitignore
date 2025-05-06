@@ -49,3 +49,6 @@ temp/
 
 # Debug
 .pnpm-debug.log*
+
+# Prisma generated
+prisma/generated/
