@@ -129,6 +129,10 @@ The project uses Prisma ORM with a plugin-based approach:
 
 ```typescript
 // src/plugins/prisma.ts
+import { PrismaClient } from '../../prisma/generated/client';
+import { FastifyInstance, FastifyPluginAsync } from 'fastify';
+import fp from 'fastify-plugin';
+
 declare module 'fastify' {
   interface FastifyInstance {
     prisma: PrismaClient;
@@ -495,6 +499,11 @@ Add the new model to the Prisma schema:
 
 ```prisma
 // prisma/schema.prisma
+generator client {
+    provider = "prisma-client-js"
+    output   = "generated/client"
+}
+
 model Product {
   id          Int      @id @default(autoincrement())
   name        String   @unique
