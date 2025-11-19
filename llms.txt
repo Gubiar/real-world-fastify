@@ -696,7 +696,7 @@ HOST="0.0.0.0"
 NODE_ENV="development" # or "production" or "test"
 
 # Database
-DATABASE_URL="postgresql://USER:PASSWORD@URL:PORT/DB_NAME?schema=public"
+DATABASE_URL="postgresql://USER:PASSWORD@URL:PORT/DB_NAME"
 
 # Authentication
 JWT_SECRET="your-super-secret-key"

@@ -97,7 +97,7 @@ HOST="0.0.0.0"
 NODE_ENV="development"
 
 # Database
-DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/fastify_db?schema=public"
+DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/fastify_db"
 
 # Authentication
 JWT_SECRET="your-super-secret-key"

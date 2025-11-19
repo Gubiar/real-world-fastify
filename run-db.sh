@@ -26,4 +26,4 @@ docker run -d \
 echo "✅ PostgreSQL is running!"
 echo ""
 echo "Connection URL:"
-echo "postgresql://$DB_USER:$DB_PASSWORD@localhost:$DB_PORT/$DB_NAME?schema=public"
+echo "postgresql://$DB_USER:$DB_PASSWORD@localhost:$DB_PORT/$DB_NAME"

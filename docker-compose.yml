@@ -14,7 +14,7 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - HOST=0.0.0.0
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/fastify_db?schema=public
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/fastify_db
       - JWT_SECRET=${JWT_SECRET:-super-secret-jwt-key-change-in-production}
       - JWT_EXPIRES_IN=1d
       - CORS_ORIGIN=*
