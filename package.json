@@ -24,7 +24,6 @@
     "@fastify/swagger": "^9.6.1",
     "@fastify/swagger-ui": "^5.2.3",
     "@fastify/type-provider-typebox": "^6.1.0",
-    "@prisma/client": "^7.0.0",
     "@sinclair/typebox": "^0.34.41",
     "bcrypt": "6.0.0",
     "dotenv": "^17.2.3",
@@ -48,7 +47,6 @@
     "jest": "^30.2.0",
     "pino-pretty": "^13.1.2",
     "prettier": "^3.6.2",
-    "prisma": "^7.0.0",
     "ts-jest": "^29.4.5",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
@@ -57,10 +55,7 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "@prisma/client",
-      "@prisma/engines",
       "esbuild",
-      "prisma",
       "bcrypt"
     ]
   }
