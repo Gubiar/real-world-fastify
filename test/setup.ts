@@ -1,40 +1,34 @@
 import 'dotenv/config';
-import { PrismaClient } from '../prisma/generated/client';
 import { afterAll, beforeAll } from '@jest/globals';
+import { createDbConnection } from '../src/db/connection';
+import { users } from '../src/db/schema';
 
-// Set test environment
-process.env.NODE_ENV = 'test';
-process.env.LOG_LEVEL = 'error';
+process.env['NODE_ENV'] = 'test';
+process.env['LOG_LEVEL'] = 'error';
 
-// For tests, we use an in-memory JWT secret
-process.env.JWT_SECRET = 'test-jwt-secret-for-testing-only';
+process.env['JWT_SECRET'] = 'test-jwt-secret-for-testing-only';
 
-// Create a Prisma client for tests
-const prisma = new PrismaClient({
-  log: ['error'],
-});
+const databaseUrl = process.env['DATABASE_URL'];
 
-// Create a test database setup
+if (!databaseUrl) {
+  throw new Error('DATABASE_URL environment variable is not set');
+}
+
+const db = createDbConnection(databaseUrl, false);
+
 beforeAll(async () => {
-  // Confirm we're in a test environment to avoid accidentally affecting production data
-  if (process.env.NODE_ENV !== 'test') {
+  if (process.env['NODE_ENV'] !== 'test') {
     throw new Error('Tests must be run with NODE_ENV=test');
   }
 
-  // Connect to the database
-  await prisma.$connect();
-
-  // Clean up database before tests
   try {
-    // Only truncate the users table for our auth tests
-    await prisma.user.deleteMany();
+    await db.delete(users);
   } catch (error) {
     console.error('Error setting up test database:', error);
     throw error;
   }
 });
 
-// Clean up resources after all tests
 afterAll(async () => {
-  await prisma.$disconnect();
-}); 
+  await db.$client.end();
+});
