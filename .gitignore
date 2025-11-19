@@ -24,10 +24,8 @@ yarn-error.log*
 # Typescript
 *.tsbuildinfo
 
-# Prisma
-prisma/migrations/
-prisma/*.db
-prisma/.env
+# Database
+*.db
 
 # Test coverage
 coverage/
@@ -50,5 +48,3 @@ temp/
 # Debug
 .pnpm-debug.log*
 
-# Prisma generated
-prisma/generated/
