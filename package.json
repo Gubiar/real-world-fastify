@@ -1,7 +1,7 @@
 {
   "name": "fastify-auth-boilerplate",
   "version": "1.0.0",
-  "description": "Production-ready Fastify boilerplate with authentication",
+  "description": "Production-ready Fastify boilerplate with Drizzle ORM and authentication",
   "main": "dist/app.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/app.ts",
