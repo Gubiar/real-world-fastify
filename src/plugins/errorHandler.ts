@@ -1,36 +1,36 @@
 import { FastifyError, FastifyInstance, FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
-import { HttpStatus } from '../utils/httpStatusCodes';
 
 interface ErrorResponse {
-  success: boolean;
+  success: false;
   message: string;
   statusCode: number;
-  stack?: string | undefined;
+  stack?: string;
 }
 
-const errorHandler: FastifyPluginAsync = async (server: FastifyInstance) => {
+const errorHandlerPlugin: FastifyPluginAsync = async (server: FastifyInstance) => {
   server.setErrorHandler((error: FastifyError, request: FastifyRequest, reply: FastifyReply) => {
-    // Log the error
-    request.log.error(error);
+    const statusCode = error.statusCode || 500;
     
-    // Prepare error response
+    request.log.error({
+      err: error,
+      statusCode,
+      url: request.url,
+      method: request.method,
+    });
+
     const response: ErrorResponse = {
       success: false,
       message: error.message || 'Internal Server Error',
-      statusCode: error.statusCode || HttpStatus.INTERNAL_ERROR
+      statusCode,
     };
-    
-    // Add stack trace in development mode
+
     if (process.env['NODE_ENV'] === 'development' && error.stack) {
       response.stack = error.stack;
     }
 
-    // Send error response
-    reply
-      .code(response.statusCode)
-      .send(response);
+    reply.code(statusCode).send(response);
   });
 };
 
-export default fp(errorHandler); 
+export default fp(errorHandlerPlugin);

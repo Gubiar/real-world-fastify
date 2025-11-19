@@ -6,13 +6,15 @@ import { registerAuthRoutes } from '../../src/modules/auth/auth.route';
 import drizzlePlugin from '../../src/plugins/drizzle';
 import jwtPlugin from '../../src/plugins/jwt';
 import { users } from '../../src/db/schema';
+import { schemaErrorFormatter } from '../../src/utils/schemaErrorFormatter';
 
 describe('Auth Module', () => {
   let app: FastifyInstance;
   
   beforeAll(async () => {
     app = fastify({
-      logger: false
+      logger: false,
+      schemaErrorFormatter
     }).withTypeProvider<TypeBoxTypeProvider>();
     
     await app.register(drizzlePlugin);
@@ -97,7 +99,7 @@ describe('Auth Module', () => {
       expect(response.statusCode).toBe(400);
     });
     
-    test('should fail with invalid email format', async () => {
+    test('should fail with invalid email format and show user-friendly message', async () => {
       const response = await app.inject({
         method: 'POST',
         url: '/api/auth/register',
@@ -109,6 +111,30 @@ describe('Auth Module', () => {
       });
       
       expect(response.statusCode).toBe(400);
+      const body = JSON.parse(response.payload);
+      expect(body.message).toContain('Invalid email address');
+      expect(body.message).not.toContain('format');
+      expect(body.message).not.toContain('pattern');
+    });
+    
+    test('should fail with weak password and show user-friendly message', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/auth/register',
+        payload: {
+          email: 'test@example.com',
+          password: 'password123',
+          name: 'Test User'
+        }
+      });
+      
+      expect(response.statusCode).toBe(400);
+      const body = JSON.parse(response.payload);
+      expect(body.message).toContain('Password must contain');
+      expect(body.message).toContain('uppercase');
+      expect(body.message).not.toContain('pattern');
+      expect(body.message).not.toContain('regex');
+      expect(body.message).not.toContain('^(?=');
     });
   });
   

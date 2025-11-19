@@ -10,6 +10,7 @@ import drizzlePlugin from './plugins/drizzle';
 import { registerAuthRoutes } from './modules/auth/auth.route';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
+import { schemaErrorFormatter } from './utils/schemaErrorFormatter';
 
 // Load environment variables
 dotenv.config();
@@ -43,7 +44,6 @@ const server = fastify({
         };
       }
     },
-    // Use different logging formats for development vs production
     ...(process.env['NODE_ENV'] !== 'production' ? {
       transport: {
         target: 'pino-pretty',
@@ -53,7 +53,8 @@ const server = fastify({
         }
       }
     } : {})
-  }
+  },
+  schemaErrorFormatter
 }).withTypeProvider<TypeBoxTypeProvider>();
 
 // Register error handler (should be first)
