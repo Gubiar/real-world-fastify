@@ -1,20 +1,16 @@
 import { FastifyInstance } from 'fastify';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import rateLimit from '@fastify/rate-limit';
 import { registerHandler, loginHandler } from './auth.controller';
 import { LoginInput, LoginResponse, RegisterInput, RegisterResponse } from './auth.schema';
+import { authRateLimitConfig } from '../../config/security';
 
-/**
- * Register auth routes
- * 
- * @param server - Fastify server instance
- * @param prefix - Route prefix
- */
 export function registerAuthRoutes(server: FastifyInstance, prefix: string): void {
   server.register(async (instance) => {
-    // Use TypeBox for schema validation
+    await instance.register(rateLimit, authRateLimitConfig);
+    
     const fastifyTypebox = instance.withTypeProvider<TypeBoxTypeProvider>();
 
-    // Register routes
     fastifyTypebox.post(
       '/register',
       {

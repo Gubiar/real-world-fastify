@@ -14,6 +14,7 @@ const config = {
   moduleNameMapper: {
     '^src/(.*)$': '<rootDir>/src/$1'
   },
+  setupFiles: ['<rootDir>/test/jest.setup.ts'],
   setupFilesAfterEnv: ['<rootDir>/test/setup.ts'],
   detectOpenHandles: true,
   forceExit: true,

@@ -9,16 +9,7 @@ declare module 'fastify' {
 }
 
 const drizzlePlugin: FastifyPluginAsync = async (fastify: FastifyInstance) => {
-  const databaseUrl = process.env['DATABASE_URL'];
-  
-  if (!databaseUrl) {
-    throw new Error('DATABASE_URL environment variable is not set');
-  }
-
-  const db = createDbConnection(
-    databaseUrl,
-    process.env['NODE_ENV'] === 'development'
-  );
+  const db = createDbConnection();
 
   fastify.decorate('db', db);
 

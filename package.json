@@ -32,7 +32,8 @@
     "fastify-plugin": "^5.1.0",
     "node-gyp": "^12.1.0",
     "pino": "^10.1.0",
-    "postgres": "^3.4.7"
+    "postgres": "^3.4.7",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

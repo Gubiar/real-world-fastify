@@ -1,31 +1,40 @@
 import { FastifyError, FastifyInstance, FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
-
-interface ErrorResponse {
-  success: false;
-  message: string;
-  statusCode: number;
-  stack?: string;
-}
+import { ErrorResponse } from '../types/common';
+import { AppError } from '../utils/errors';
+import { isDevelopment } from '../config/env';
 
 const errorHandlerPlugin: FastifyPluginAsync = async (server: FastifyInstance) => {
-  server.setErrorHandler((error: FastifyError, request: FastifyRequest, reply: FastifyReply) => {
+  server.setErrorHandler((error: FastifyError | AppError, request: FastifyRequest, reply: FastifyReply) => {
+    const isAppError = error instanceof AppError;
     const statusCode = error.statusCode || 500;
     
-    request.log.error({
-      err: error,
-      statusCode,
-      url: request.url,
-      method: request.method,
-    });
+    const shouldLog = !isAppError || !error.isOperational;
+    
+    if (shouldLog) {
+      request.log.error({
+        err: error,
+        statusCode,
+        url: request.url,
+        method: request.method,
+        body: request.body,
+      });
+    } else {
+      request.log.info({
+        message: error.message,
+        statusCode,
+        url: request.url,
+        method: request.method,
+      });
+    }
 
     const response: ErrorResponse = {
       success: false,
-      message: error.message || 'Internal Server Error',
+      message: isAppError ? error.message : 'Internal Server Error',
       statusCode,
     };
 
-    if (process.env['NODE_ENV'] === 'development' && error.stack) {
+    if (isDevelopment && error.stack) {
       response.stack = error.stack;
     }
 

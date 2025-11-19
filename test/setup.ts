@@ -1,20 +1,8 @@
-import 'dotenv/config';
 import { afterAll, beforeAll } from '@jest/globals';
 import { createDbConnection } from '../src/db/connection';
 import { users } from '../src/db/schema';
 
-process.env['NODE_ENV'] = 'test';
-process.env['LOG_LEVEL'] = 'error';
-
-process.env['JWT_SECRET'] = 'test-jwt-secret-for-testing-only';
-
-const databaseUrl = process.env['DATABASE_URL'];
-
-if (!databaseUrl) {
-  throw new Error('DATABASE_URL environment variable is not set');
-}
-
-const db = createDbConnection(databaseUrl, false);
+const db = createDbConnection({ logger: false, url: process.env["DATABASE_URL"] });
 
 beforeAll(async () => {
   if (process.env['NODE_ENV'] !== 'test') {

@@ -1,81 +1,45 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { LoginInputType, RegisterInputType } from './auth.schema';
-import { validateUser, generateJwt, registerUser } from './auth.service';
+import { AuthService } from './auth.service';
+import { UserRepository } from '../../repositories/user.repository';
 import { HttpStatus } from '../../utils/httpStatusCodes';
-import { error, success } from '../../utils/response';
-import { sanitizeUser } from '../users/user.service';
+import { success } from '../../utils/response';
+import { LoginResponse } from '../../types/auth';
+import { UserWithoutPassword } from '../../types/database';
 
-// Define error interface
-interface AppError extends Error {
-  code?: string;
-  statusCode?: number;
-}
-
-/**
- * Handle user registration
- */
 export async function registerHandler(
   request: FastifyRequest<{ Body: RegisterInputType }>,
   reply: FastifyReply
-) {
-  try {
-    const user = await registerUser(request.server, request.body);
-    
-    // Sanitize user data (remove password)
-    const sanitizedUser = sanitizeUser(user);
-    
-    return success(reply, sanitizedUser, HttpStatus.CREATED);
-  } catch (err: unknown) {
-    const error_msg = err instanceof Error ? err.message : 'Error registering user';
-    const appError = err as AppError;
-    
-    return error(
-      reply, 
-      error_msg, 
-      appError.statusCode || HttpStatus.BAD_REQUEST
-    );
-  }
+): Promise<void> {
+  const userRepository = new UserRepository(request.server.db);
+  const authService = new AuthService(userRepository);
+  
+  const user = await authService.register(request.body);
+  const sanitizedUser = userRepository.sanitizeUser(user);
+  
+  success<UserWithoutPassword>(reply, sanitizedUser, HttpStatus.CREATED);
 }
 
-/**
- * Handle user login
- */
 export async function loginHandler(
   request: FastifyRequest<{ Body: LoginInputType }>,
   reply: FastifyReply
-) {
-  try {
-    const { email, password } = request.body;
-    
-    const user = await validateUser(request.server, email, password);
-    
-    if (!user) {
-      return error(
-        reply,
-        'Invalid email or password',
-        HttpStatus.UNAUTHORIZED
-      );
-    }
-    
-    const token = generateJwt(request.server, {
-      userId: user.id,
-      email: user.email
-    });
-    
-    // Sanitize user data (remove password)
-    const sanitizedUser = sanitizeUser(user);
-    
-    return success(reply, { 
-      token,
-      user: sanitizedUser
-    });
-  } catch (err: unknown) {
-    const error_msg = err instanceof Error ? err.message : 'Error during login';
-    
-    return error(
-      reply,
-      error_msg,
-      HttpStatus.INTERNAL_ERROR
-    );
-  }
-} 
+): Promise<void> {
+  const userRepository = new UserRepository(request.server.db);
+  const authService = new AuthService(userRepository);
+  
+  const user = await authService.login(request.body);
+  
+  const token = authService.generateToken(request.server, {
+    userId: user.id,
+    email: user.email
+  });
+  
+  const sanitizedUser = userRepository.sanitizeUser(user);
+  
+  const response: LoginResponse = {
+    token,
+    user: sanitizedUser
+  };
+  
+  success<LoginResponse>(reply, response);
+}
