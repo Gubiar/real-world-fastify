@@ -3,37 +3,32 @@ import { FastifyInstance } from 'fastify';
 import fastify from 'fastify';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { registerAuthRoutes } from '../../src/modules/auth/auth.route';
-import prismaPlugin from '../../src/plugins/prisma';
+import drizzlePlugin from '../../src/plugins/drizzle';
 import jwtPlugin from '../../src/plugins/jwt';
+import { users } from '../../src/db/schema';
 
 describe('Auth Module', () => {
   let app: FastifyInstance;
   let authToken: string;
   
   beforeAll(async () => {
-    // Create test server
     app = fastify({
       logger: false
     }).withTypeProvider<TypeBoxTypeProvider>();
     
-    // Register Prisma plugin
-    await app.register(prismaPlugin);
+    await app.register(drizzlePlugin);
     
-    // Register JWT plugin which is required for authentication
     await app.register(jwtPlugin);
     
-    // Register routes
     registerAuthRoutes(app, '/api/auth');
     
-    // Add a protected route for testing JWT
     app.get('/protected', {
       preHandler: app.authenticate,
     }, async (request) => {
       return { protected: true, user: request.user };
     });
     
-    // Clean test database
-    await app.prisma.user.deleteMany();
+    await app.db.delete(users);
     
     await app.ready();
   });
@@ -62,8 +57,6 @@ describe('Auth Module', () => {
   });
   
   test('should login with valid credentials', async () => {
-    // First ensure the user exists by trying to register
-    // (If it already exists, that's ok too)
     await app.inject({
       method: 'POST',
       url: '/api/auth/register',
@@ -74,7 +67,6 @@ describe('Auth Module', () => {
       }
     });
     
-    // Now try to login
     const response = await app.inject({
       method: 'POST',
       url: '/api/auth/login',
@@ -84,7 +76,6 @@ describe('Auth Module', () => {
       }
     });
     
-    // For debugging if the test fails
     if (response.statusCode !== 200) {
       console.error('Login response:', response.payload);
     }
@@ -114,7 +105,6 @@ describe('Auth Module', () => {
   });
   
   test('should access protected route with valid token', async () => {
-    // First login to get a token
     const loginResponse = await app.inject({
       method: 'POST',
       url: '/api/auth/login',
@@ -128,7 +118,6 @@ describe('Auth Module', () => {
     const loginBody = JSON.parse(loginResponse.payload);
     authToken = loginBody.data.token;
     
-    // Now try to access protected route
     const response = await app.inject({
       method: 'GET',
       url: '/protected',
@@ -152,4 +141,4 @@ describe('Auth Module', () => {
     
     expect(response.statusCode).toBe(401);
   });
-}); 
+});
