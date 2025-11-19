@@ -1,12 +1,12 @@
 # Real-World Fastify Boilerplate
 
-A production-ready Fastify boilerplate with TypeScript, Prisma, JWT authentication, and comprehensive testing. This project follows best practices for building secure, maintainable, and scalable REST APIs.
+A production-ready Fastify boilerplate with TypeScript, Drizzle ORM, JWT authentication, and comprehensive testing. This project follows best practices for building secure, maintainable, and scalable REST APIs.
 
 ## Features
 
 - **Fastify Web Framework**: High-performance Node.js framework
 - **TypeScript**: With strict type checking and proper error handling
-- **Prisma ORM**: Type-safe database access with PostgreSQL
+- **Drizzle ORM**: Type-safe database access with PostgreSQL
 - **JWT Authentication**: Secure authentication with @fastify/jwt
 - **Request Validation**: Using TypeBox for runtime validation
 - **Swagger Documentation**: Interactive API documentation
@@ -22,27 +22,30 @@ A production-ready Fastify boilerplate with TypeScript, Prisma, JWT authenticati
 
 ```
 ├── src/
+│   ├── db/                # Database
+│   │   ├── schema.ts      # Drizzle schema
+│   │   ├── connection.ts  # Database connection
+│   │   ├── migrations/    # Database migrations
+│   │   └── seed.ts        # Database seed file
 │   ├── modules/           # Feature modules
 │   │   ├── auth/          # Authentication module
 │   │   │   ├── auth.controller.ts
 │   │   │   ├── auth.route.ts
 │   │   │   ├── auth.schema.ts
 │   │   │   └── auth.service.ts
-│   │   ├── users/         # User management
-│   │   │   └── user.service.ts
-│   │   └── base.route.ts  # Base router class
+│   │   └── users/         # User management
+│   │       └── user.service.ts
 │   ├── plugins/           # Fastify plugins
 │   │   ├── jwt.ts         # JWT authentication
+│   │   ├── drizzle.ts     # Drizzle database plugin
 │   │   ├── errorHandler.ts # Global error handler
 │   │   └── rateLimit.ts   # Rate limiting
 │   ├── utils/             # Utility functions
 │   │   ├── httpStatusCodes.ts
 │   │   ├── logger.ts
-│   │   ├── prisma.ts      # Prisma client
 │   │   └── response.ts    # Response helpers
 │   └── app.ts             # Application entry point
-├── prisma/
-│   └── schema.prisma      # Database schema
+├── drizzle.config.ts      # Drizzle configuration
 ├── test/                  # Tests
 │   ├── auth/              # Auth tests
 │   │   └── auth.test.ts
@@ -110,10 +113,15 @@ LOG_LEVEL="info"
 4. Set up the database:
 
 ```bash
-# Create database migrations
-pnpm db:migrate
+# Generate migrations from schema
+pnpm db:generate
 # or
-npm run db:migrate
+npm run db:generate
+
+# Push schema to database
+pnpm db:push
+# or
+npm run db:push
 
 # Optional: Seed the database
 pnpm db:seed
@@ -183,10 +191,11 @@ export const FeatureResponse = Type.Object({
 ```typescript
 // src/modules/your-feature/feature.service.ts
 import { FastifyInstance } from "fastify";
+import { someTable } from "../../db/schema";
 
 export async function someMethod(server: FastifyInstance) {
   // Implement your business logic
-  return await server.prisma.someModel.findMany();
+  return await server.db.select().from(someTable);
 }
 ```
 
@@ -292,7 +301,7 @@ import { test, expect, describe, beforeAll, afterAll } from "@jest/globals";
 import { FastifyInstance } from "fastify";
 import fastify from "fastify";
 import { registerFeatureRoutes } from "../../src/modules/your-feature/feature.route";
-import prismaPlugin from "../../src/plugins/prisma";
+import drizzlePlugin from "../../src/plugins/drizzle";
 import jwtPlugin from "../../src/plugins/jwt";
 
 describe("Your Feature", () => {
@@ -302,7 +311,7 @@ describe("Your Feature", () => {
     app = fastify();
 
     // Register plugins
-    await app.register(prismaPlugin);
+    await app.register(drizzlePlugin);
     await app.register(jwtPlugin);
 
     // Register routes
