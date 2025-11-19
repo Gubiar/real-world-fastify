@@ -6,9 +6,9 @@ This is a production-ready Fastify boilerplate with TypeScript, Prisma ORM, JWT 
 
 ## Core Technologies
 
-- **Fastify**: High-performance Node.js web framework (v5.3.2+)
-- **TypeScript**: Statically typed JavaScript (v5.8.3+)
-- **Prisma ORM**: Type-safe database client with PostgreSQL (v6.6.0+)
+- **Fastify**: High-performance Node.js web framework (v5.6.2+)
+- **TypeScript**: Statically typed JavaScript (v5.9.3+)
+- **Drizzle ORM**: Type-safe database client with PostgreSQL (v0.44.7+)
 - **JWT Authentication**: Using @fastify/jwt for token-based auth
 - **TypeBox**: Runtime type validation with JSON Schema
 - **Jest**: Testing framework for unit/integration tests
@@ -20,6 +20,11 @@ The project follows a modular architecture organized by feature:
 
 ```
 src/
+├── db/                # Database layer
+│   ├── schema.ts      # Drizzle schema definitions
+│   ├── connection.ts  # Database connection setup
+│   ├── migrations/    # Database migrations
+│   └── seed.ts        # Database seed file
 ├── modules/           # Feature modules (organized domain entities)
 │   ├── auth/          # Authentication module
 │   │   ├── auth.controller.ts  # Request handlers
@@ -30,7 +35,7 @@ src/
 │       └── user.service.ts     # User-related operations
 ├── plugins/           # Fastify plugins
 │   ├── jwt.ts         # JWT authentication plugin
-│   ├── prisma.ts      # Prisma database plugin
+│   ├── drizzle.ts     # Drizzle database plugin
 │   ├── errorHandler.ts # Global error handler
 │   └── rateLimit.ts   # Rate limiting plugin
 ├── utils/             # Utility functions
@@ -56,23 +61,27 @@ src/
 The project uses Fastify's plugin system to extend the server's functionality:
 
 ```typescript
-// src/plugins/prisma.ts
-const prismaPlugin: FastifyPluginAsync = async (fastify: FastifyInstance) => {
-  const prisma = new PrismaClient({
-    log: process.env['NODE_ENV'] === 'development' 
-      ? ['query', 'error', 'warn'] 
-      : ['error'],
-  });
-
-  await prisma.$connect();
-  fastify.decorate('prisma', prisma);
+// src/plugins/drizzle.ts
+const drizzlePlugin: FastifyPluginAsync = async (fastify: FastifyInstance) => {
+  const databaseUrl = process.env['DATABASE_URL'];
   
-  fastify.addHook('onClose', async (instance) => {
-    await instance.prisma.$disconnect();
+  if (!databaseUrl) {
+    throw new Error('DATABASE_URL environment variable is not set');
+  }
+
+  const db = createDbConnection(
+    databaseUrl,
+    process.env['NODE_ENV'] === 'development'
+  );
+
+  fastify.decorate('db', db);
+
+  fastify.addHook('onClose', async () => {
+    await db.$client.end();
   });
 };
 
-export default fp(prismaPlugin);
+export default fp(drizzlePlugin);
 ```
 
 ### Route Registration
@@ -125,37 +134,42 @@ interface ErrorResponse {
 
 ## Database Access
 
-The project uses Prisma ORM with a plugin-based approach:
+The project uses Drizzle ORM with a plugin-based approach:
 
 ```typescript
-// src/plugins/prisma.ts
-import { PrismaClient } from '../../prisma/generated/client';
-import { FastifyInstance, FastifyPluginAsync } from 'fastify';
-import fp from 'fastify-plugin';
+// src/db/schema.ts
+import { pgTable, serial, varchar, timestamp } from 'drizzle-orm/pg-core';
 
+export const users = pgTable('users', {
+  id: serial('id').primaryKey(),
+  email: varchar('email', { length: 255 }).notNull().unique(),
+  password: varchar('password', { length: 255 }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow().$onUpdate(() => new Date()),
+});
+
+export type User = typeof users.$inferSelect;
+export type NewUser = typeof users.$inferInsert;
+
+// src/plugins/drizzle.ts
 declare module 'fastify' {
   interface FastifyInstance {
-    prisma: PrismaClient;
+    db: DbConnection;
   }
 }
 
-const prismaPlugin: FastifyPluginAsync = async (fastify: FastifyInstance) => {
-  const prisma = new PrismaClient({
-    log: process.env['NODE_ENV'] === 'development' 
-      ? ['query', 'error', 'warn'] 
-      : ['error'],
-  });
-
-  await prisma.$connect();
-  fastify.decorate('prisma', prisma);
+const drizzlePlugin: FastifyPluginAsync = async (fastify: FastifyInstance) => {
+  const db = createDbConnection(databaseUrl, isDevMode);
+  fastify.decorate('db', db);
   
-  fastify.addHook('onClose', async (instance) => {
-    await instance.prisma.$disconnect();
+  fastify.addHook('onClose', async () => {
+    await db.$client.end();
   });
 };
 ```
 
-This approach ensures the Prisma client is available throughout the application via the Fastify server instance, preventing connection pool exhaustion.
+This approach ensures the Drizzle database connection is available throughout the application via the Fastify server instance, preventing connection pool exhaustion.
 
 ## Step-by-Step Guide to Adding New Features
 
@@ -214,30 +228,28 @@ Create a service file (e.g., `product.service.ts`) to handle business logic:
 ```typescript
 // src/modules/products/product.service.ts
 import { FastifyInstance } from 'fastify';
+import { eq } from 'drizzle-orm';
+import { products } from '../../db/schema';
 import { ProductInputType } from './product.schema';
 
 export async function findAll(server: FastifyInstance) {
-  return await server.prisma.product.findMany();
+  return await server.db.select().from(products);
 }
 
 export async function findById(server: FastifyInstance, id: number) {
-  return await server.prisma.product.findUnique({
-    where: { id }
-  });
+  const result = await server.db.select().from(products).where(eq(products.id, id));
+  return result[0];
 }
 
 export async function create(server: FastifyInstance, data: ProductInputType) {
-  return await server.prisma.product.create({
-    data
-  });
+  const result = await server.db.insert(products).values(data).returning();
+  return result[0];
 }
 
 export async function update(server: FastifyInstance, id: number, data: ProductInputType) {
   try {
-    return await server.prisma.product.update({
-      where: { id },
-      data
-    });
+    const result = await server.db.update(products).set(data).where(eq(products.id, id)).returning();
+    return result[0] || null;
   } catch (error) {
     return null;
   }
@@ -245,9 +257,7 @@ export async function update(server: FastifyInstance, id: number, data: ProductI
 
 export async function remove(server: FastifyInstance, id: number) {
   try {
-    await server.prisma.product.delete({
-      where: { id }
-    });
+    await server.db.delete(products).where(eq(products.id, id));
     return true;
   } catch (error) {
     return false;
@@ -493,33 +503,32 @@ export function registerProductRoutes(server: FastifyInstance, prefix: string): 
 }
 ```
 
-### 6. Update Prisma Schema
+### 6. Update Drizzle Schema
 
-Add the new model to the Prisma schema:
+Add the new table to the Drizzle schema:
 
-```prisma
-// prisma/schema.prisma
-generator client {
-    provider = "prisma-client-js"
-    output   = "generated/client"
-}
+```typescript
+// src/db/schema.ts
+import { pgTable, serial, varchar, timestamp, real } from 'drizzle-orm/pg-core';
 
-model Product {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique
-  description String
-  price       Float
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+export const products = pgTable('products', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 255 }).notNull().unique(),
+  description: varchar('description', { length: 500 }).notNull(),
+  price: real('price').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow().$onUpdate(() => new Date()),
+});
 
-  @@map("products")
-}
+export type Product = typeof products.$inferSelect;
+export type NewProduct = typeof products.$inferInsert;
 ```
 
-Then run the migration:
+Then generate and push the migration:
 
 ```bash
-pnpm db:migrate
+pnpm db:generate
+pnpm db:push
 ```
 
 ### 7. Register the Routes
@@ -546,7 +555,8 @@ import fastify from 'fastify';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { registerProductRoutes } from '../../src/modules/products/product.route';
 import jwtPlugin from '../../src/plugins/jwt';
-import prismaPlugin from '../../src/plugins/prisma';
+import drizzlePlugin from '../../src/plugins/drizzle';
+import { products } from '../../src/db/schema';
 
 describe('Product Module', () => {
   let app: FastifyInstance;
@@ -559,7 +569,7 @@ describe('Product Module', () => {
     }).withTypeProvider<TypeBoxTypeProvider>();
     
     // Register plugins
-    await app.register(prismaPlugin);
+    await app.register(drizzlePlugin);
     await app.register(jwtPlugin);
     
     // Register routes
@@ -572,7 +582,7 @@ describe('Product Module', () => {
     });
     
     // Clean test database
-    await app.prisma.product.deleteMany();
+    await app.db.delete(products);
     
     await app.ready();
     
@@ -657,10 +667,11 @@ describe('Product Module', () => {
    - Don't store sensitive data in JWT tokens
 
 6. **Database Access**:
-   - Always use the server.prisma instance injected by the plugin
+   - Always use the server.db instance injected by the plugin
    - Use await with all async database calls to preserve stack traces
    - Use transactions for operations that modify multiple records
    - Include proper error handling for database operations
+   - Import query operators from drizzle-orm (eq, and, or, etc.)
 
 7. **Security Practices**:
    - Validate all input data with TypeBox schemas
@@ -745,8 +756,9 @@ When extending this project, follow these guidelines:
    - Add to Docker configuration if needed
 
 3. **Database Changes**:
-   - Update the Prisma schema
-   - Create migrations (`pnpm db:migrate`)
+   - Update the Drizzle schema (src/db/schema.ts)
+   - Generate migrations (`pnpm db:generate`)
+   - Push to database (`pnpm db:push`)
    - Update relevant services
    - Consider backward compatibility
 
@@ -766,4 +778,4 @@ This project is designed to be extended while maintaining consistency, security,
 
 ## Conclusion
 
-This Fastify boilerplate provides a solid foundation for building production-ready REST APIs with TypeScript. By following the module-based architecture and established patterns, you can rapidly develop new features while maintaining code quality and security. 
+This Fastify boilerplate provides a solid foundation for building production-ready REST APIs with TypeScript and Drizzle ORM. By following the module-based architecture and established patterns, you can rapidly develop new features while maintaining code quality and security. 
