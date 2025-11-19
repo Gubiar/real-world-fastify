@@ -6,7 +6,7 @@ import dotenv from 'dotenv';
 import jwtPlugin from './plugins/jwt';
 import errorHandler from './plugins/errorHandler';
 import rateLimitPlugin from './plugins/rateLimit';
-import prismaPlugin from './plugins/prisma';
+import drizzlePlugin from './plugins/drizzle';
 import { registerAuthRoutes } from './modules/auth/auth.route';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
@@ -59,15 +59,14 @@ const server = fastify({
 // Register error handler (should be first)
 server.register(errorHandler);
 
-// Register Prisma plugin
-server.register(prismaPlugin);
+server.register(drizzlePlugin);
 
 // Register Swagger
 server.register(swagger, {
   openapi: {
     info: {
       title: 'Fastify API',
-      description: 'Fastify API with TypeScript, Prisma, and JWT authentication',
+      description: 'Fastify API with TypeScript, Drizzle ORM, and JWT authentication',
       version: '1.0.0'
     },
     components: {
