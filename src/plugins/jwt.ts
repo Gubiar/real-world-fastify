@@ -1,8 +1,13 @@
-import { FastifyInstance, FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
-import fastifyJwt from '@fastify/jwt';
-import fp from 'fastify-plugin';
-import { unauthorized } from '../utils/response';
-import { config } from '../config/env';
+import {
+  FastifyInstance,
+  FastifyPluginAsync,
+  FastifyReply,
+  FastifyRequest,
+} from "fastify";
+import fastifyJwt from "@fastify/jwt";
+import fp from "fastify-plugin";
+import { unauthorized } from "../utils/response";
+import { config } from "../config/env";
 
 interface JWTPayload {
   userId: number;
@@ -11,16 +16,19 @@ interface JWTPayload {
   aud?: string;
 }
 
-declare module '@fastify/jwt' {
+declare module "@fastify/jwt" {
   interface FastifyJWT {
     payload: JWTPayload;
     user: JWTPayload;
   }
 }
 
-declare module 'fastify' {
+declare module "fastify" {
   interface FastifyInstance {
-    authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    authenticate: (
+      request: FastifyRequest,
+      reply: FastifyReply,
+    ) => Promise<void>;
   }
 }
 
@@ -30,24 +38,24 @@ const jwtPlugin: FastifyPluginAsync = async (server: FastifyInstance) => {
     sign: {
       expiresIn: config.jwtExpiresIn,
       iss: config.jwtIssuer,
-      aud: config.jwtAudience
+      aud: config.jwtAudience,
     },
     verify: {
       allowedIss: config.jwtIssuer,
-      allowedAud: config.jwtAudience
-    }
+      allowedAud: config.jwtAudience,
+    },
   });
 
   server.decorate(
-    'authenticate', 
-    async function(request: FastifyRequest, reply: FastifyReply) {
+    "authenticate",
+    async function (request: FastifyRequest, reply: FastifyReply) {
       try {
         await request.jwtVerify();
       } catch {
-        return unauthorized(reply, 'Invalid or expired token');
+        return unauthorized(reply, "Invalid or expired token");
       }
-    }
+    },
   );
 };
 
-export default fp(jwtPlugin); 
+export default fp(jwtPlugin);

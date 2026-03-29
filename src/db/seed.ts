@@ -1,44 +1,43 @@
-import dotenv from 'dotenv';
-import { createDbConnection } from './connection';
-import { users } from './schema';
-import bcrypt from 'bcryptjs';
+import dotenv from "dotenv";
+import { createDbConnection } from "./connection";
+import { users } from "./schema";
+import bcrypt from "bcryptjs";
 
 dotenv.config();
 
 async function seed() {
-  const databaseUrl = process.env['DATABASE_URL'];
-  
+  const databaseUrl = process.env["DATABASE_URL"];
+
   if (!databaseUrl) {
-    throw new Error('DATABASE_URL environment variable is not set');
+    throw new Error("DATABASE_URL environment variable is not set");
   }
 
   const db = createDbConnection(databaseUrl, true);
 
-  console.info('Seeding database...');
+  console.info("Seeding database...");
 
-  const hashedPassword = await bcrypt.hash('password123', 10);
+  const hashedPassword = await bcrypt.hash("password123", 10);
 
   await db.insert(users).values([
     {
-      email: 'admin@example.com',
+      email: "admin@example.com",
       password: hashedPassword,
-      name: 'Admin User',
+      name: "Admin User",
     },
     {
-      email: 'user@example.com',
+      email: "user@example.com",
       password: hashedPassword,
-      name: 'Regular User',
+      name: "Regular User",
     },
   ]);
 
-  console.info('Database seeded successfully!');
+  console.info("Database seeded successfully!");
 
   await db.$client.end();
   process.exit(0);
 }
 
 seed().catch((error) => {
-  console.error('Error seeding database:', error);
+  console.error("Error seeding database:", error);
   process.exit(1);
 });
-

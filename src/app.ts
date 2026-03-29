@@ -1,16 +1,16 @@
-import fastify from 'fastify';
-import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import swagger from '@fastify/swagger';
-import swaggerUi from '@fastify/swagger-ui';
-import jwtPlugin from './plugins/jwt';
-import errorHandler from './plugins/errorHandler';
-import rateLimitPlugin from './plugins/rateLimit';
-import drizzlePlugin from './plugins/drizzle';
-import { registerAuthRoutes } from './modules/auth/auth.route';
-import cors from '@fastify/cors';
-import helmet from '@fastify/helmet';
-import { schemaErrorFormatter } from './utils/schemaErrorFormatter';
-import { config } from './config/env';
+import fastify from "fastify";
+import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
+import swagger from "@fastify/swagger";
+import swaggerUi from "@fastify/swagger-ui";
+import jwtPlugin from "./plugins/jwt";
+import errorHandler from "./plugins/errorHandler";
+import rateLimitPlugin from "./plugins/rateLimit";
+import drizzlePlugin from "./plugins/drizzle";
+import { registerAuthRoutes } from "./modules/auth/auth.route";
+import cors from "@fastify/cors";
+import helmet from "@fastify/helmet";
+import { schemaErrorFormatter } from "./utils/schemaErrorFormatter";
+import { config } from "./config/env";
 
 export function buildApp() {
   const server = fastify({
@@ -19,13 +19,13 @@ export function buildApp() {
       level: config.logLevel,
       redact: {
         paths: [
-          'req.headers.authorization',
-          'req.headers.cookie',
+          "req.headers.authorization",
+          "req.headers.cookie",
           'req.headers["set-cookie"]',
           'req.headers["x-api-key"]',
-          'req.headers["x-auth-token"]'
+          'req.headers["x-auth-token"]',
         ],
-        censor: '[Redacted]'
+        censor: "[Redacted]",
       },
       serializers: {
         req(request) {
@@ -35,26 +35,26 @@ export function buildApp() {
             parameters: request.params,
             headers: {
               host: request.headers.host,
-              'user-agent': request.headers['user-agent'],
+              "user-agent": request.headers["user-agent"],
               origin: request.headers.origin,
-              'x-forwarded-for': request.headers['x-forwarded-for']
-            }
+              "x-forwarded-for": request.headers["x-forwarded-for"],
+            },
           };
-        }
+        },
       },
-      ...(config.nodeEnv !== 'production'
+      ...(config.nodeEnv !== "production"
         ? {
             transport: {
-              target: 'pino-pretty',
+              target: "pino-pretty",
               options: {
-                translateTime: 'HH:MM:ss Z',
-                ignore: 'pid,hostname'
-              }
-            }
+                translateTime: "HH:MM:ss Z",
+                ignore: "pid,hostname",
+              },
+            },
           }
-        : {})
+        : {}),
     },
-    schemaErrorFormatter
+    schemaErrorFormatter,
   }).withTypeProvider<TypeBoxTypeProvider>();
 
   server.register(errorHandler);
@@ -63,48 +63,49 @@ export function buildApp() {
   server.register(swagger, {
     openapi: {
       info: {
-        title: 'Fastify API',
-        description: 'Fastify API with TypeScript, Drizzle ORM, and JWT authentication',
-        version: '1.0.0'
+        title: "Fastify API",
+        description:
+          "Fastify API with TypeScript, Drizzle ORM, and JWT authentication",
+        version: "1.0.0",
       },
       components: {
         securitySchemes: {
           bearerAuth: {
-            type: 'http',
-            scheme: 'bearer',
-            bearerFormat: 'JWT'
-          }
-        }
-      }
-    }
+            type: "http",
+            scheme: "bearer",
+            bearerFormat: "JWT",
+          },
+        },
+      },
+    },
   });
 
   if (config.enableDocs) {
     server.register(swaggerUi, {
-      routePrefix: '/docs',
+      routePrefix: "/docs",
       uiConfig: {
-        docExpansion: 'list',
-        deepLinking: false
-      }
+        docExpansion: "list",
+        deepLinking: false,
+      },
     });
   }
 
   server.register(helmet, {
     global: true,
-    contentSecurityPolicy: false
+    contentSecurityPolicy: false,
   });
 
   server.register(cors, {
     origin: config.corsOrigin,
     credentials: config.corsOrigin !== true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE']
+    methods: ["GET", "POST", "PUT", "DELETE"],
   });
 
   server.register(rateLimitPlugin);
   server.register(jwtPlugin);
-  registerAuthRoutes(server, '/api/auth');
+  registerAuthRoutes(server, "/api/auth");
 
-  server.get('/health', async () => ({ status: 'ok' }));
+  server.get("/health", async () => ({ status: "ok" }));
 
   return server;
 }
