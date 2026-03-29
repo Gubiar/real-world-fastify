@@ -45,7 +45,7 @@ describe("Environment security rules", () => {
       "postgresql://dbuser:dbpass@localhost:5432/app";
     process.env["JWT_SECRET"] = "12345678901234567890123456789012";
     process.env["CORS_ORIGIN"] = "https://example.com";
-    delete process.env["ENABLE_DOCS"];
+    process.env["ENABLE_DOCS"] = "";
 
     const module = requireEnv("../../src/config/env") as {
       config: { enableDocs: boolean };
