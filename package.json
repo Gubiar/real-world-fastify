@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Production-ready Fastify boilerplate with Drizzle ORM and authentication",
   "main": "dist/src/server.js",
+  "packageManager": "pnpm@10.7.1",
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
