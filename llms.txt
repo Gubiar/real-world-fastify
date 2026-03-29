@@ -11,11 +11,12 @@ Projeto de API com Fastify + TypeScript + Drizzle ORM para PostgreSQL.
 3. Reaproveitar `buildApp()` para testes e integrações.
 4. Usar `config/env.ts` para qualquer acesso a variáveis de ambiente.
 5. Usar `AppError` para erros de domínio e deixar o plugin global tratar resposta.
+6. Emails devem ser normalizados para lowercase via `normalizeEmail()` em `user.service.ts` antes de qualquer persistência ou busca.
 
 ## Runtime Entry Points
 
-- `src/app.ts`: expõe `buildApp()`.
-- `src/server.ts`: inicia servidor HTTP.
+- `src/app.ts`: expõe `buildApp()` com plugins, rotas e configuração.
+- `src/server.ts`: inicia servidor HTTP com graceful shutdown (`SIGINT`, `SIGTERM`, `uncaughtException`, `unhandledRejection`). Erros fatais saem com exit code 1.
 
 ## Module Pattern
 
@@ -29,8 +30,9 @@ Para novas features:
 ## API Conventions
 
 - Request/response schema com TypeBox.
-- Resposta de sucesso: `success(reply, data, status?)`.
-- Resposta de erro esperada: `error(reply, message, status?)`.
+- Resposta de sucesso: `success(reply, data, status?)` retorna `{ success: true, data }`.
+- Resposta de erro esperada: `error(reply, message, status?)` retorna `{ success: false, message, statusCode }`.
+- Erros via `AppError` com status < 500 expõem a mensagem ao cliente. Status >= 500 sempre retorna `"Internal Server Error"`.
 
 ## Database
 
@@ -38,15 +40,20 @@ Para novas features:
 - Config: `drizzle.config.ts`.
 - Schema: `src/db/schema.ts`.
 - Migrations: `src/db/migrations`.
+- `RUN_MIGRATIONS_ON_STARTUP` controla execução automática de migrations no plugin `drizzle.ts`.
 
 ## Security
 
-- JWT via `@fastify/jwt`.
+- JWT via `@fastify/jwt` com validação de `iss` e `aud`.
 - Rate limit global e mais restritivo em endpoints de auth.
 - Helmet e CORS registrados na construção da app.
+- `TRUST_PROXY` configurável via env para ambientes atrás de reverse proxy (afeta `request.ip` e rate limit).
+- Emails normalizados para lowercase para evitar duplicatas case-sensitive.
 
 ## Testing
 
 - Jest com testes em `test/`.
 - Setup global em `test/setup.ts`.
 - Testes HTTP usando `app.inject()`.
+- `pnpm test` sobe container Postgres efêmero automaticamente via `scripts/run-tests.ts` (requer Docker).
+- CI via GitHub Actions (`.github/workflows/ci.yml`): lint, test e audit em paralelo.
