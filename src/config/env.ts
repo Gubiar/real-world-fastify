@@ -142,4 +142,5 @@ export const config = {
   rateLimitAuthMax: getNumber("RATE_LIMIT_AUTH_MAX", 5),
   rateLimitAuthWindow: getString("RATE_LIMIT_AUTH_WINDOW", "1 minute"),
   trustProxy: getBoolean("TRUST_PROXY", false),
+  dbPoolMax: getNumber("DB_POOL_MAX", 10),
 } as const;

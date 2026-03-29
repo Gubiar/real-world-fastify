@@ -12,10 +12,10 @@ declare module "fastify" {
 }
 
 const drizzlePlugin: FastifyPluginAsync = async (fastify: FastifyInstance) => {
-  const db = createDbConnection(
-    config.databaseUrl,
-    config.nodeEnv === "development",
-  );
+  const db = createDbConnection(config.databaseUrl, {
+    logger: config.nodeEnv === "development",
+    poolMax: config.dbPoolMax,
+  });
 
   if (config.runMigrationsOnStartup) {
     fastify.log.info("Running database migrations...");

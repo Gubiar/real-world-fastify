@@ -2,6 +2,7 @@ import fastify from "fastify";
 import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
 import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
+import { sql } from "drizzle-orm";
 import jwtPlugin from "./plugins/jwt";
 import errorHandler from "./plugins/errorHandler";
 import rateLimitPlugin from "./plugins/rateLimit";
@@ -105,7 +106,18 @@ export function buildApp() {
   server.register(jwtPlugin);
   registerAuthRoutes(server, "/api/auth");
 
-  server.get("/health", async () => ({ status: "ok" }));
+  server.addHook("onSend", async (request, reply) => {
+    reply.header("x-request-id", request.id);
+  });
+
+  server.get("/health", async (_request, reply) => {
+    try {
+      await server.db.execute(sql`SELECT 1`);
+      return { status: "ok" };
+    } catch {
+      return reply.code(503).send({ status: "unhealthy" });
+    }
+  });
 
   return server;
 }

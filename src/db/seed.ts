@@ -12,11 +12,9 @@ async function seed() {
     throw new Error("DATABASE_URL environment variable is not set");
   }
 
-  const db = createDbConnection(databaseUrl, true);
+  const db = createDbConnection(databaseUrl);
 
-  console.info("Seeding database...");
-
-  const hashedPassword = await bcrypt.hash("password123", 10);
+  const hashedPassword = await bcrypt.hash("Password123", 10);
 
   await db.insert(users).values([
     {
@@ -31,13 +29,11 @@ async function seed() {
     },
   ]);
 
-  console.info("Database seeded successfully!");
-
   await db.$client.end();
   process.exit(0);
 }
 
 seed().catch((error) => {
-  console.error("Error seeding database:", error);
+  console.error(error);
   process.exit(1);
 });

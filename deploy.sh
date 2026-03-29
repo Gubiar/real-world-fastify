@@ -133,4 +133,11 @@ fi
 
 echo "Deployment completed successfully!"
 echo "Your application is now running at http://localhost:3000"
-echo "Swagger documentation is available at http://localhost:3000/docs" 
+
+_enable_docs="${ENABLE_DOCS:-}"
+if [ -z "$_enable_docs" ] && [ -f .env ]; then
+    _enable_docs=$(grep -m1 '^ENABLE_DOCS=' .env 2>/dev/null | cut -d'=' -f2- | tr -d '"' || true)
+fi
+if [ "$_enable_docs" != "false" ]; then
+    echo "Swagger documentation is available at http://localhost:3000/docs"
+fi

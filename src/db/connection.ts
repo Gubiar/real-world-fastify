@@ -2,17 +2,22 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
 
+type ConnectionOptions = {
+  logger?: boolean;
+  poolMax?: number;
+};
+
 export function createDbConnection(
   connectionString: string,
-  logger: boolean = false,
+  options: ConnectionOptions = {},
 ) {
   const client = postgres(connectionString, {
-    max: 10,
+    max: options.poolMax ?? 10,
   });
 
   return drizzle(client, {
     schema,
-    logger: logger,
+    logger: options.logger ?? false,
   });
 }
 
