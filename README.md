@@ -351,6 +351,21 @@ This boilerplate includes several security features:
 - **Validation**: Request validation to prevent injections
 - **Data Sanitization**: User data is sanitized before responses
 
+### Dependency Audit
+
+Run dependency audits regularly:
+
+```bash
+pnpm audit --prod
+pnpm audit
+```
+
+To refresh dependency resolutions after override changes:
+
+```bash
+pnpm install
+```
+
 ## Deployment
 
 For production deployment:
