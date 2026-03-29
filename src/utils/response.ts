@@ -1,7 +1,7 @@
 import { FastifyReply } from 'fastify';
 import { HttpStatus } from './httpStatusCodes';
 
-export function success(reply: FastifyReply, data: any, status = HttpStatus.OK) {
+export function success<T>(reply: FastifyReply, data: T, status = HttpStatus.OK) {
   return reply.code(status).send({ success: true, data });
 }
 

@@ -1,6 +1,5 @@
 import { Type, Static } from '@sinclair/typebox';
 
-// Password regex: at least 8 chars, 1 uppercase, 1 lowercase, 1 number
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
 
 export const RegisterInput = Type.Object({
@@ -43,3 +42,11 @@ export const LoginResponse = Type.Object({
     })
   })
 }); 
+
+export const MeResponse = Type.Object({
+  success: Type.Boolean(),
+  data: Type.Object({
+    userId: Type.Number(),
+    email: Type.String()
+  })
+});

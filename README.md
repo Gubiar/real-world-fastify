@@ -1,487 +1,136 @@
 # Real-World Fastify Boilerplate
 
-A production-ready Fastify boilerplate with TypeScript, Drizzle ORM, JWT authentication, and comprehensive testing. This project follows best practices for building secure, maintainable, and scalable REST APIs.
+Boilerplate de back-end com Fastify + TypeScript + Drizzle ORM, com foco em base limpa, segura e pronta para evoluir.
 
-## Features
+## Stack
 
-- **Fastify Web Framework**: High-performance Node.js framework
-- **TypeScript**: With strict type checking and proper error handling
-- **Drizzle ORM**: Type-safe database access with PostgreSQL
-- **JWT Authentication**: Secure authentication with @fastify/jwt
-- **Request Validation**: Using TypeBox for runtime validation
-- **Swagger Documentation**: Interactive API documentation
-- **Rate Limiting**: Protection against brute force attacks
-- **Security Headers**: Using Helmet and proper CORS configuration
-- **Error Handling**: Global error handler with proper responses
-- **Testing**: Jest setup with example tests
-- **Logging**: Advanced Pino logging with redaction
-- **Code Structure**: Clear modular architecture
-- **ESLint**: Modern linting setup
+- Fastify 5
+- TypeScript strict
+- Drizzle ORM + PostgreSQL
+- TypeBox para validação de payload
+- JWT com `@fastify/jwt`
+- Jest para testes de integração
+- Docker e Docker Compose
 
-## Project Structure
+## Estrutura
 
-```
-├── src/
-│   ├── db/                # Database
-│   │   ├── schema.ts      # Drizzle schema
-│   │   ├── connection.ts  # Database connection
-│   │   ├── migrations/    # Database migrations
-│   │   └── seed.ts        # Database seed file
-│   ├── modules/           # Feature modules
-│   │   ├── auth/          # Authentication module
-│   │   │   ├── auth.controller.ts
-│   │   │   ├── auth.route.ts
-│   │   │   ├── auth.schema.ts
-│   │   │   └── auth.service.ts
-│   │   └── users/         # User management
-│   │       └── user.service.ts
-│   ├── plugins/           # Fastify plugins
-│   │   ├── jwt.ts         # JWT authentication
-│   │   ├── drizzle.ts     # Drizzle database plugin
-│   │   ├── errorHandler.ts # Global error handler
-│   │   └── rateLimit.ts   # Rate limiting
-│   ├── utils/             # Utility functions
-│   │   ├── httpStatusCodes.ts
-│   │   ├── logger.ts
-│   │   └── response.ts    # Response helpers
-│   └── app.ts             # Application entry point
-├── drizzle.config.ts      # Drizzle configuration
-├── test/                  # Tests
-│   ├── auth/              # Auth tests
-│   │   └── auth.test.ts
-│   └── setup.ts           # Test setup
-├── eslint.config.js       # ESLint configuration
-├── jest.config.js         # Jest configuration
-├── tsconfig.json          # TypeScript configuration
-├── sample.env             # Environment variables example
-└── package.json           # Dependencies and scripts
+```text
+src/
+  app.ts
+  server.ts
+  config/
+    env.ts
+  db/
+    connection.ts
+    schema.ts
+    migrations/
+    seed.ts
+  modules/
+    auth/
+      auth.controller.ts
+      auth.route.ts
+      auth.schema.ts
+      auth.service.ts
+    users/
+      user.service.ts
+  plugins/
+    drizzle.ts
+    errorHandler.ts
+    jwt.ts
+    rateLimit.ts
+  utils/
+    appError.ts
+    httpStatusCodes.ts
+    response.ts
+    schemaErrorFormatter.ts
+test/
+  auth/
+    auth.test.ts
+  setup.ts
 ```
 
-## Getting Started
+## Requisitos
 
-### Prerequisites
+- Node.js 22+
+- pnpm
+- PostgreSQL 16+
 
-- Node.js 18+ (LTS recommended)
-- pnpm/npm package manager
-- PostgreSQL 13+
+## Setup local
 
-### Installation
-
-1. Clone the repository:
-
-```bash
-git clone https://github.com/Gubiar/real-world-fastify.git
-cd real-world-fastify
-```
-
-2. Install dependencies:
+1. Instale dependências:
 
 ```bash
 pnpm install
-# or
-npm install
 ```
 
-3. Set up environment variables:
+2. Copie as variáveis:
 
 ```bash
 cp sample.env .env
 ```
 
-Edit the `.env` file with your configuration:
+3. Ajuste o `DATABASE_URL` no `.env`.
 
-```
-# Server configuration
-PORT=3000
-HOST="0.0.0.0"
-NODE_ENV="development"
-
-# Database
-DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/fastify_db"
-
-# Authentication
-JWT_SECRET="your-super-secret-key"
-JWT_EXPIRES_IN="1d"
-
-# CORS
-CORS_ORIGIN="http://localhost:3000"
-
-# Logging
-LOG_LEVEL="info"
-```
-
-4. Set up the database:
+4. Rode migrations:
 
 ```bash
-# Generate migrations from schema
-pnpm db:generate
-# or
-npm run db:generate
-
-# Push schema to database
-pnpm db:push
-# or
-npm run db:push
-
-# Optional: Seed the database
-pnpm db:seed
-# or
-npm run db:seed
+pnpm db:migrate
 ```
 
-### Running the Application
-
-#### Development Mode
+5. Inicie em desenvolvimento:
 
 ```bash
 pnpm dev
-# or
-npm run dev
 ```
 
-This starts the server with hot reloading at http://localhost:3000.
+API em `http://localhost:3000`  
+Docs em `http://localhost:3000/docs`
 
-#### Production Mode
+## Scripts
+
+- `pnpm dev`: desenvolvimento com watch
+- `pnpm build`: build TypeScript
+- `pnpm start`: inicia build de produção
+- `pnpm lint`: lint do projeto
+- `pnpm lint:fix`: lint com autofix
+- `pnpm format`: formata código
+- `pnpm format:check`: valida formatação
+- `pnpm test`: testes
+- `pnpm test:coverage`: cobertura
+- `pnpm db:generate`: gera migration Drizzle
+- `pnpm db:migrate`: aplica migrations
+- `pnpm db:push`: aplica schema sem migration
+- `pnpm db:studio`: abre Drizzle Studio
+- `pnpm db:seed`: popula dados de exemplo
+
+## Docker
+
+Banco apenas:
 
 ```bash
-# Build the application
-pnpm build
-# or
-npm run build
-
-# Start the production server
-pnpm start
-# or
-npm start
+./deploy.sh --db-only
 ```
 
-### API Documentation
-
-Swagger documentation is available at http://localhost:3000/docs when the server is running.
-
-## Creating New Routes
-
-The project follows a modular architecture where each feature has its own module. To create new routes:
-
-1. **Create a new module directory** under `src/modules/your-feature/`.
-
-2. **Create the schema file** with TypeBox schemas for request/response:
-
-```typescript
-// src/modules/your-feature/feature.schema.ts
-import { Type, Static } from "@sinclair/typebox";
-
-export const FeatureInput = Type.Object({
-  property: Type.String(),
-  // Define your properties
-});
-
-export type FeatureInputType = Static<typeof FeatureInput>;
-
-export const FeatureResponse = Type.Object({
-  success: Type.Boolean(),
-  data: Type.Object({
-    // Define response properties
-  }),
-});
-```
-
-3. **Create a service** to handle business logic:
-
-```typescript
-// src/modules/your-feature/feature.service.ts
-import { FastifyInstance } from "fastify";
-import { someTable } from "../../db/schema";
-
-export async function someMethod(server: FastifyInstance) {
-  // Implement your business logic
-  return await server.db.select().from(someTable);
-}
-```
-
-4. **Create a controller** to handle requests:
-
-```typescript
-// src/modules/your-feature/feature.controller.ts
-import { FastifyReply, FastifyRequest } from "fastify";
-import { FeatureInputType } from "./feature.schema";
-import { someMethod } from "./feature.service";
-import { success, error } from "../../utils/response";
-import { HttpStatus } from "../../utils/httpStatusCodes";
-
-export async function handleRequest(request: FastifyRequest<{ Body: FeatureInputType }>, reply: FastifyReply) {
-  try {
-    const result = await someMethod(request.server);
-    return success(reply, result);
-  } catch (err) {
-    return error(reply, "Error message", HttpStatus.INTERNAL_ERROR);
-  }
-}
-```
-
-5. **Create a router** extending BaseRouter:
-
-```typescript
-// src/modules/your-feature/feature.route.ts
-import { FastifyInstance } from "fastify";
-import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
-import { handleRequest } from "./feature.controller";
-import { FeatureInput, FeatureResponse } from "./feature.schema";
-
-export function registerFeatureRoutes(server: FastifyInstance, prefix: string): void {
-  server.register(
-    async (instance) => {
-      const fastifyTypebox = instance.withTypeProvider<TypeBoxTypeProvider>();
-
-      fastifyTypebox.post(
-        "/endpoint",
-        {
-          schema: {
-            body: FeatureInput,
-            response: {
-              200: FeatureResponse,
-            },
-            description: "Endpoint description",
-            tags: ["feature-tag"],
-          },
-        },
-        handleRequest
-      );
-
-      // Add more routes as needed
-    },
-    { prefix }
-  );
-}
-```
-
-6. **Register your router** in `app.ts`:
-
-```typescript
-// In src/app.ts
-import { registerFeatureRoutes } from "./modules/your-feature/feature.route";
-
-// Register routes
-registerFeatureRoutes(server, "/api/your-feature");
-```
-
-## Testing
-
-The project uses Jest for testing. Tests are located in the `test/` directory.
-
-### Running Tests
+Aplicação + banco:
 
 ```bash
-# Run all tests
-pnpm test
-# or
-npm test
-
-# Run tests with coverage
-pnpm test:coverage
-# or
-npm run test:coverage
-
-# Run tests in watch mode during development
-pnpm test:watch
-# or
-npm run test:watch
-```
-
-### Writing Tests
-
-1. Create a new test file in the appropriate subdirectory under `test/`.
-2. Follow the example in `test/auth/auth.test.ts`.
-3. Use `app.inject()` for HTTP testing without starting a server.
-
-Example:
-
-```typescript
-import { test, expect, describe, beforeAll, afterAll } from "@jest/globals";
-import { FastifyInstance } from "fastify";
-import fastify from "fastify";
-import { registerFeatureRoutes } from "../../src/modules/your-feature/feature.route";
-import drizzlePlugin from "../../src/plugins/drizzle";
-import jwtPlugin from "../../src/plugins/jwt";
-
-describe("Your Feature", () => {
-  let app: FastifyInstance;
-
-  beforeAll(async () => {
-    app = fastify();
-
-    // Register plugins
-    await app.register(drizzlePlugin);
-    await app.register(jwtPlugin);
-
-    // Register routes
-    registerFeatureRoutes(app, "/api/your-feature");
-
-    await app.ready();
-  });
-
-  afterAll(async () => {
-    await app.close();
-  });
-
-  test("should perform an action", async () => {
-    const response = await app.inject({
-      method: "POST",
-      url: "/api/your-feature/endpoint",
-      payload: {
-        // Test data
-      },
-    });
-
-    expect(response.statusCode).toBe(200);
-    // More assertions
-  });
-});
-```
-
-## Security
-
-This boilerplate includes several security features:
-
-- **Password Hashing**: Using bcrypt with proper salt rounds
-- **JWT Authentication**: Secure token-based authentication
-- **Rate Limiting**: Protect against brute force attacks
-- **Helmet**: HTTP security headers
-- **CORS**: Configured cross-origin resource sharing
-- **Validation**: Request validation to prevent injections
-- **Data Sanitization**: User data is sanitized before responses
-
-### Dependency Audit
-
-Run dependency audits regularly:
-
-```bash
-pnpm audit --prod
-pnpm audit
-```
-
-To refresh dependency resolutions after override changes:
-
-```bash
-pnpm install
-```
-
-## Deployment
-
-For production deployment:
-
-1. Set the `NODE_ENV` environment variable to `production`.
-2. Ensure all sensitive environment variables are securely set.
-3. Use a process manager like PM2 or run in a Docker container.
-4. Set up a reverse proxy (Nginx, Apache) for production use.
-
-## Deployment with Docker
-
-This project includes Docker setup for easy deployment. Docker handles all dependencies, database setup, and running the application in an isolated environment.
-
-## Docker Prerequisites
-
-- [Docker](https://docs.docker.com/get-docker/)
-- [Docker Compose](https://docs.docker.com/compose/install/)
-
-## Deploying with Docker
-
-You can use the included deployment script:
-
-```bash
-# Make the script executable
-chmod +x deploy.sh
-
-# Deploy with default settings
-./deploy.sh
-
-# Build images before starting
 ./deploy.sh --build
+```
 
-# Force recreation of containers
-./deploy.sh --recreate
+Parar tudo:
 
-# Follow logs after starting
-./deploy.sh --logs
-
-# Stop and remove containers
+```bash
 ./deploy.sh --down
 ```
 
-Or manually with Docker Compose:
+## Padrões do projeto
 
-```bash
-# Build and start in detached mode
-docker-compose up -d --build
+- Arquitetura por módulo (`route`, `controller`, `service`, `schema`)
+- Respostas padronizadas em `utils/response.ts`
+- Erros de domínio com `AppError`
+- Configuração centralizada e tipada em `config/env.ts`
+- Type-safety sem `any` nos pontos críticos
 
-# View logs
-docker-compose logs -f
+## Testes
 
-# Stop containers
-docker-compose down
-```
-
-## Docker Configuration
-
-The Docker setup includes:
-
-- **Multi-stage build**: optimized for smaller production images
-- **PostgreSQL database**: pre-configured and ready to use
-- **Automatic migrations**: runs Prisma migrations on startup
-- **Environment variables**: configurable via docker-compose.yml
-- **Volume persistence**: database data persists between restarts
-- **Security**: runs as non-root user
-
-## Production Deployment Considerations
-
-For production deployment:
-
-1. Set a strong JWT_SECRET environment variable
-2. Use a proper domain in CORS_ORIGIN
-3. Consider using Docker Swarm or Kubernetes for clustering
-4. Set up a reverse proxy (like Nginx) for SSL termination
-5. Use a dedicated database service instead of the Docker container for important data
-
-## Deployment with Docker in WSL
-
-For Windows users using WSL (Windows Subsystem for Linux), we provide a specialized deployment script with optimizations for WSL environments.
-
-```bash
-# Make the script executable
-chmod +x wsl-deploy.sh
-
-# Deploy with extended timeouts and optimizations for WSL
-./wsl-deploy.sh --pull --build
-
-# View logs
-./wsl-deploy.sh --logs
-```
-
-### WSL Performance Tips
-
-When running Docker in WSL:
-
-1. **Store project files in the WSL filesystem** (not `/mnt/c/...`) for better performance
-2. **Use WSL 2** rather than WSL 1 for improved virtualization
-3. **Install Docker Desktop for Windows** with WSL 2 integration
-4. **Increase Docker timeouts** for slower network connections
-
-For more troubleshooting help, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch: `git checkout -b feature/my-feature`
-3. Commit your changes: `git commit -am 'Add my feature'`
-4. Push to the branch: `git push origin feature/my-feature`
-5. Submit a pull request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgments
-
-- Fastify team for the awesome framework
-- Prisma team for the great ORM
-- All the open-source contributors whose tools make this possible
+Os testes usam a mesma configuração da app por `buildApp()` e executam com `app.inject()` sem subir servidor HTTP externo.

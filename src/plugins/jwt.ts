@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyPluginAsync, FastifyReply, FastifyRequest } fro
 import fastifyJwt from '@fastify/jwt';
 import fp from 'fastify-plugin';
 import { unauthorized } from '../utils/response';
+import { config } from '../config/env';
 
 interface JWTPayload {
   userId: number;
@@ -22,16 +23,10 @@ declare module 'fastify' {
 }
 
 const jwtPlugin: FastifyPluginAsync = async (server: FastifyInstance) => {
-  // Make sure JWT_SECRET is provided in production
-  const secret = process.env['JWT_SECRET'];
-  if (!secret && process.env['NODE_ENV'] === 'production') {
-    throw new Error('JWT_SECRET must be provided in production environment');
-  }
-
   server.register(fastifyJwt, {
-    secret: secret || 'super-secret-jwt-token',
+    secret: config.jwtSecret,
     sign: {
-      expiresIn: process.env['JWT_EXPIRES_IN'] || '1d'
+      expiresIn: config.jwtExpiresIn
     }
   });
 
@@ -40,7 +35,7 @@ const jwtPlugin: FastifyPluginAsync = async (server: FastifyInstance) => {
     async function(request: FastifyRequest, reply: FastifyReply) {
       try {
         await request.jwtVerify();
-      } catch (err) {
+      } catch {
         return unauthorized(reply, 'Invalid or expired token');
       }
     }

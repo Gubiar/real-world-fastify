@@ -1,7 +1,10 @@
 import { FastifyInstance } from 'fastify';
-import * as bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { eq } from 'drizzle-orm';
 import { users, User } from '../../db/schema';
+import { config } from '../../config/env';
+import { AppError } from '../../utils/appError';
+import { HttpStatus } from '../../utils/httpStatusCodes';
 
 export async function findByEmail(
   server: FastifyInstance,
@@ -24,17 +27,20 @@ export async function create(
   data: { email: string; password: string; name: string }
 ): Promise<User> {
   const { email, password, name } = data;
-  
-  const saltRounds = 10;
-  const hashedPassword = await bcrypt.hash(password, saltRounds);
-  
-  const result = await server.db.insert(users).values({
+
+  const hashedPassword = await bcrypt.hash(password, config.bcryptRounds);
+
+  const [createdUser] = await server.db.insert(users).values({
     email,
     password: hashedPassword,
     name
   }).returning();
-  
-  return result[0] as User;
+
+  if (!createdUser) {
+    throw new AppError('Could not create user', HttpStatus.INTERNAL_ERROR);
+  }
+
+  return createdUser;
 }
 
 export async function comparePassword(
@@ -45,6 +51,6 @@ export async function comparePassword(
 }
 
 export function sanitizeUser(user: User): Omit<User, 'password'> {
-  const { password, ...sanitizedUser } = user;
+  const { password: _password, ...sanitizedUser } = user;
   return sanitizedUser;
 }

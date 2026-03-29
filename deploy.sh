@@ -1,13 +1,11 @@
 #!/bin/bash
 set -e
 
-# Check if Docker is installed
 if ! command -v docker &> /dev/null; then
     echo "Docker is not installed. Please install Docker first."
     exit 1
 fi
 
-# Check which Docker Compose command to use (v1 or v2)
 if command -v docker-compose &> /dev/null; then
     COMPOSE_CMD="docker-compose"
 elif docker compose version &> /dev/null; then
@@ -19,7 +17,6 @@ fi
 
 echo "Using Docker Compose command: $COMPOSE_CMD"
 
-# Function to show help
 show_help() {
     echo "Usage: ./deploy.sh [options]"
     echo "Options:"
@@ -28,15 +25,16 @@ show_help() {
     echo "  --down            Stop and remove containers, networks, and volumes"
     echo "  --logs            Follow the logs after starting the containers"
     echo "  --pull            Pull latest images (with retry logic)"
+    echo "  --db-only         Start only the database service"
     echo "  --help            Show this help message"
 }
 
-# Parse arguments
 BUILD=false
 RECREATE=false
 DOWN=false
 LOGS=false
 PULL=false
+DB_ONLY=false
 
 for arg in "$@"; do
     case $arg in
@@ -55,6 +53,9 @@ for arg in "$@"; do
         --pull)
             PULL=true
             ;;
+        --db-only)
+            DB_ONLY=true
+            ;;
         --help)
             show_help
             exit 0
@@ -67,21 +68,24 @@ for arg in "$@"; do
     esac
 done
 
-# If --down is specified, stop and remove containers
+if grep -qi microsoft /proc/version 2>/dev/null; then
+    export COMPOSE_HTTP_TIMEOUT=300
+    export DOCKER_CLIENT_TIMEOUT=300
+fi
+
 if [ "$DOWN" = true ]; then
     echo "Stopping and removing containers..."
     $COMPOSE_CMD down
     exit 0
 fi
 
-# Pull images with retry logic
 if [ "$PULL" = true ]; then
     echo "Pulling Docker images with retry logic..."
-    max_retries=3
+    max_retries=5
     retry_count=0
-    
+
     while [ $retry_count -lt $max_retries ]; do
-        if docker pull node:20.12.0-alpine3.18; then
+        if docker pull node:22-alpine && docker pull postgres:16.0-alpine; then
             echo "Successfully pulled base images."
             break
         else
@@ -98,10 +102,12 @@ if [ "$PULL" = true ]; then
     done
 fi
 
-# Build command
-CMD="$COMPOSE_CMD up -d"
+CMD="$COMPOSE_CMD --profile app up -d"
 
-# Add options based on arguments
+if [ "$DB_ONLY" = true ]; then
+    CMD="$COMPOSE_CMD up -d db"
+fi
+
 if [ "$BUILD" = true ]; then
     CMD="$CMD --build"
 fi
@@ -110,11 +116,9 @@ if [ "$RECREATE" = true ]; then
     CMD="$CMD --force-recreate"
 fi
 
-# Execute the command
 echo "Executing: $CMD"
 eval $CMD
 
-# Check if containers started successfully
 if [ $? -eq 0 ]; then
     echo "Containers started successfully!"
 else
@@ -122,7 +126,6 @@ else
     exit 1
 fi
 
-# If --logs is specified, follow the logs
 if [ "$LOGS" = true ]; then
     echo "Following logs..."
     $COMPOSE_CMD logs -f

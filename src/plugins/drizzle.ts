@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import fp from 'fastify-plugin';
 import { createDbConnection, DbConnection } from '../db/connection';
+import { config } from '../config/env';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -9,16 +10,7 @@ declare module 'fastify' {
 }
 
 const drizzlePlugin: FastifyPluginAsync = async (fastify: FastifyInstance) => {
-  const databaseUrl = process.env['DATABASE_URL'];
-  
-  if (!databaseUrl) {
-    throw new Error('DATABASE_URL environment variable is not set');
-  }
-
-  const db = createDbConnection(
-    databaseUrl,
-    process.env['NODE_ENV'] === 'development'
-  );
+  const db = createDbConnection(config.databaseUrl, config.nodeEnv === 'development');
 
   fastify.decorate('db', db);
 

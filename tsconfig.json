@@ -29,6 +29,6 @@
     "noUncheckedIndexedAccess": true,
     "isolatedModules": true
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "prisma/generated"]
+  "include": ["src/**/*", "test/**/*", "drizzle.config.ts", "jest.config.js"],
+  "exclude": ["node_modules", "dist"]
 } 

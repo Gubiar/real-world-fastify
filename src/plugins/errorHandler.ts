@@ -10,7 +10,7 @@ interface ErrorResponse {
 
 const errorHandlerPlugin: FastifyPluginAsync = async (server: FastifyInstance) => {
   server.setErrorHandler((error: FastifyError, request: FastifyRequest, reply: FastifyReply) => {
-    const statusCode = error.statusCode || 500;
+    const statusCode = (error as FastifyError & { statusCode?: number }).statusCode || 500;
     
     request.log.error({
       err: error,

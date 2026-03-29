@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 import { createDbConnection } from './connection';
 import { users } from './schema';
-import * as bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 dotenv.config();
 
@@ -14,7 +14,7 @@ async function seed() {
 
   const db = createDbConnection(databaseUrl, true);
 
-  console.log('Seeding database...');
+  console.info('Seeding database...');
 
   const hashedPassword = await bcrypt.hash('password123', 10);
 
@@ -31,7 +31,7 @@ async function seed() {
     },
   ]);
 
-  console.log('Database seeded successfully!');
+  console.info('Database seeded successfully!');
 
   await db.$client.end();
   process.exit(0);

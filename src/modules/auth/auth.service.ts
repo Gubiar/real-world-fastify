@@ -3,6 +3,8 @@ import { RegisterInput } from './auth.schema';
 import { FastifyInstance } from 'fastify';
 import { findByEmail, create, comparePassword } from '../users/user.service';
 import { User } from '../../db/schema';
+import { AppError } from '../../utils/appError';
+import { HttpStatus } from '../../utils/httpStatusCodes';
 
 export async function registerUser(
   server: FastifyInstance, 
@@ -13,10 +15,10 @@ export async function registerUser(
   const existingUser = await findByEmail(server, email);
   
   if (existingUser) {
-    throw new Error('User with this email already exists');
+    throw new AppError('User with this email already exists', HttpStatus.BAD_REQUEST);
   }
   
-  return await create(server, input);
+  return create(server, input);
 }
 
 export async function validateUser(

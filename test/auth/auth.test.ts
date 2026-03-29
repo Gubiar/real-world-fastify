@@ -1,33 +1,13 @@
 import { test, expect, describe, beforeAll, afterAll, beforeEach } from '@jest/globals';
 import { FastifyInstance } from 'fastify';
-import fastify from 'fastify';
-import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import { registerAuthRoutes } from '../../src/modules/auth/auth.route';
-import drizzlePlugin from '../../src/plugins/drizzle';
-import jwtPlugin from '../../src/plugins/jwt';
 import { users } from '../../src/db/schema';
-import { schemaErrorFormatter } from '../../src/utils/schemaErrorFormatter';
+import { buildApp } from '../../src/app';
 
 describe('Auth Module', () => {
   let app: FastifyInstance;
   
   beforeAll(async () => {
-    app = fastify({
-      logger: false,
-      schemaErrorFormatter
-    }).withTypeProvider<TypeBoxTypeProvider>();
-    
-    await app.register(drizzlePlugin);
-    await app.register(jwtPlugin);
-    
-    registerAuthRoutes(app, '/api/auth');
-    
-    app.get('/protected', {
-      preHandler: app.authenticate,
-    }, async (request) => {
-      return { protected: true, user: request.user };
-    });
-    
+    app = buildApp();
     await app.ready();
   });
   
@@ -244,7 +224,7 @@ describe('Auth Module', () => {
     test('should access protected route with valid token', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/protected',
+        url: '/api/auth/me',
         headers: {
           authorization: `Bearer ${validToken}`
         }
@@ -252,15 +232,15 @@ describe('Auth Module', () => {
       
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.payload);
-      expect(body.protected).toBe(true);
-      expect(body.user).toBeDefined();
-      expect(body.user.email).toBe('protected@example.com');
+      expect(body.success).toBe(true);
+      expect(body.data).toBeDefined();
+      expect(body.data.email).toBe('protected@example.com');
     });
     
     test('should reject access without token', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/protected'
+        url: '/api/auth/me'
       });
       
       expect(response.statusCode).toBe(401);
@@ -269,7 +249,7 @@ describe('Auth Module', () => {
     test('should reject access with invalid token', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/protected',
+        url: '/api/auth/me',
         headers: {
           authorization: 'Bearer invalid-token-here'
         }
@@ -281,7 +261,7 @@ describe('Auth Module', () => {
     test('should reject access with malformed authorization header', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/protected',
+        url: '/api/auth/me',
         headers: {
           authorization: 'InvalidFormat'
         }

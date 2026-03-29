@@ -1,20 +1,11 @@
 import { FastifyInstance } from 'fastify';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import { registerHandler, loginHandler } from './auth.controller';
-import { LoginInput, LoginResponse, RegisterInput, RegisterResponse } from './auth.schema';
+import { registerHandler, loginHandler, meHandler } from './auth.controller';
+import { LoginInput, LoginResponse, MeResponse, RegisterInput, RegisterResponse } from './auth.schema';
 
-/**
- * Register auth routes
- * 
- * @param server - Fastify server instance
- * @param prefix - Route prefix
- */
 export function registerAuthRoutes(server: FastifyInstance, prefix: string): void {
   server.register(async (instance) => {
-    // Use TypeBox for schema validation
     const fastifyTypebox = instance.withTypeProvider<TypeBoxTypeProvider>();
-
-    // Register routes
     fastifyTypebox.post(
       '/register',
       {
@@ -43,6 +34,22 @@ export function registerAuthRoutes(server: FastifyInstance, prefix: string): voi
         }
       },
       loginHandler
+    );
+
+    fastifyTypebox.get(
+      '/me',
+      {
+        preHandler: instance.authenticate,
+        schema: {
+          response: {
+            200: MeResponse
+          },
+          description: 'Get authenticated user payload',
+          tags: ['authentication'],
+          security: [{ bearerAuth: [] }]
+        }
+      },
+      meHandler
     );
   }, { prefix });
 } 
