@@ -21,10 +21,10 @@ COPY --from=build /app/dist ./dist
 COPY --from=build /app/src/db/migrations ./src/db/migrations
 COPY drizzle.config.ts ./
 COPY docker-entrypoint.sh ./
-RUN chmod +x ./docker-entrypoint.sh
+RUN sed -i 's/\r$//' ./docker-entrypoint.sh && chmod +x ./docker-entrypoint.sh
 RUN addgroup -S appuser && adduser -S appuser -G appuser
 RUN chown -R appuser:appuser /app
 USER appuser
 EXPOSE 3000
 ENTRYPOINT ["./docker-entrypoint.sh"]
-CMD ["node", "dist/app.js"]
+CMD ["node", "dist/src/server.js"]

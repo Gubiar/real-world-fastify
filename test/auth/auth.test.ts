@@ -8,6 +8,9 @@ describe('Auth Module', () => {
   
   beforeAll(async () => {
     app = buildApp();
+    app.get('/boom', async () => {
+      throw new Error('internal details');
+    });
     await app.ready();
   });
   
@@ -268,6 +271,56 @@ describe('Auth Module', () => {
       });
       
       expect(response.statusCode).toBe(401);
+    });
+
+    test('should reject access with invalid issuer token', async () => {
+      const invalidIssToken = app.jwt.sign(
+        { userId: 1, email: 'bad@example.com' },
+        { iss: 'invalid-issuer', aud: 'real-world-fastify-users' }
+      );
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/auth/me',
+        headers: {
+          authorization: `Bearer ${invalidIssToken}`
+        }
+      });
+
+      expect(response.statusCode).toBe(401);
+    });
+
+    test('should reject access with invalid audience token', async () => {
+      const invalidAudToken = app.jwt.sign(
+        { userId: 1, email: 'bad@example.com' },
+        { iss: 'real-world-fastify', aud: 'invalid-audience' }
+      );
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/auth/me',
+        headers: {
+          authorization: `Bearer ${invalidAudToken}`
+        }
+      });
+
+      expect(response.statusCode).toBe(401);
+    });
+  });
+
+  describe('Error Handler', () => {
+    test('should not leak internal error details on 500', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/boom'
+      });
+
+      expect(response.statusCode).toBe(500);
+      const body = JSON.parse(response.payload);
+      expect(body.success).toBe(false);
+      expect(body.message).toBe('Internal Server Error');
+      expect(body.stack).toBeUndefined();
+      expect(response.payload).not.toContain('internal details');
     });
   });
 });

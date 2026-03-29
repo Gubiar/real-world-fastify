@@ -2,11 +2,11 @@
   "name": "fastify-auth-boilerplate",
   "version": "1.0.0",
   "description": "Production-ready Fastify boilerplate with Drizzle ORM and authentication",
-  "main": "dist/server.js",
+  "main": "dist/src/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js",
+    "start": "node dist/src/server.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
@@ -16,7 +16,7 @@
     "lint:fix": "eslint src/ test/ --fix",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
-    "test": "jest",
+    "test": "tsx scripts/run-tests.ts",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
   },
@@ -57,6 +57,13 @@
     "onlyBuiltDependencies": [
       "esbuild"
     ],
-    "overrides": {}
+    "overrides": {
+      "@hono/node-server": ">=1.19.10",
+      "effect": ">=3.20.0",
+      "esbuild": ">=0.25.0",
+      "hono": ">=4.12.7",
+      "lodash": ">=4.17.23",
+      "valibot": ">=1.2.0"
+    }
   }
 }

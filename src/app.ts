@@ -16,6 +16,16 @@ export function buildApp() {
   const server = fastify({
     logger: {
       level: config.logLevel,
+      redact: {
+        paths: [
+          'req.headers.authorization',
+          'req.headers.cookie',
+          'req.headers["set-cookie"]',
+          'req.headers["x-api-key"]',
+          'req.headers["x-auth-token"]'
+        ],
+        censor: '[Redacted]'
+      },
       serializers: {
         req(request) {
           return {
@@ -23,8 +33,10 @@ export function buildApp() {
             url: request.url,
             parameters: request.params,
             headers: {
-              ...request.headers,
-              authorization: request.headers.authorization ? '[Redacted]' : undefined
+              host: request.headers.host,
+              'user-agent': request.headers['user-agent'],
+              origin: request.headers.origin,
+              'x-forwarded-for': request.headers['x-forwarded-for']
             }
           };
         }
@@ -66,13 +78,15 @@ export function buildApp() {
     }
   });
 
-  server.register(swaggerUi, {
-    routePrefix: '/docs',
-    uiConfig: {
-      docExpansion: 'list',
-      deepLinking: false
-    }
-  });
+  if (config.enableDocs) {
+    server.register(swaggerUi, {
+      routePrefix: '/docs',
+      uiConfig: {
+        docExpansion: 'list',
+        deepLinking: false
+      }
+    });
+  }
 
   server.register(helmet, {
     global: true,
@@ -81,7 +95,7 @@ export function buildApp() {
 
   server.register(cors, {
     origin: config.corsOrigin,
-    credentials: true,
+    credentials: config.corsOrigin !== true,
     methods: ['GET', 'POST', 'PUT', 'DELETE']
   });
 

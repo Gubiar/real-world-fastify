@@ -86,6 +86,14 @@ pnpm dev
 API em `http://localhost:3000`  
 Docs em `http://localhost:3000/docs`
 
+## Segurança e produção
+
+- `JWT_SECRET` precisa ter no mínimo 32 caracteres fora de `test`.
+- Em produção, `CORS_ORIGIN` deve ser uma allowlist explícita (sem `*`).
+- Em produção, `ENABLE_DOCS` é desabilitado por padrão.
+- `RUN_MIGRATIONS_ON_STARTUP` deve permanecer `false` no container da app.
+- Migrations devem rodar em job dedicado antes do deploy da aplicação.
+
 ## Scripts
 
 - `pnpm dev`: desenvolvimento com watch
@@ -121,6 +129,24 @@ Parar tudo:
 
 ```bash
 ./deploy.sh --down
+```
+
+Para subir aplicação + banco em perfil `app`, exporte variáveis obrigatórias antes:
+
+```bash
+export POSTGRES_USER=app_user
+export POSTGRES_PASSWORD=strong_db_password
+export POSTGRES_DB=app_db
+export DATABASE_URL=postgresql://app_user:strong_db_password@db:5432/app_db
+export JWT_SECRET=replace_with_32_plus_characters_secret
+export CORS_ORIGIN=https://api.example.com,https://admin.example.com
+./deploy.sh --build
+```
+
+Para executar migrations em produção, rode um job dedicado:
+
+```bash
+pnpm db:migrate
 ```
 
 ## Padrões do projeto

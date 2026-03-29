@@ -7,15 +7,15 @@ if ! command -v docker &> /dev/null; then
 fi
 
 if command -v docker-compose &> /dev/null; then
-    COMPOSE_CMD="docker-compose"
+    COMPOSE_CMD=("docker-compose")
 elif docker compose version &> /dev/null; then
-    COMPOSE_CMD="docker compose"
+    COMPOSE_CMD=("docker" "compose")
 else
     echo "Docker Compose is not installed. Please install Docker Compose first."
     exit 1
 fi
 
-echo "Using Docker Compose command: $COMPOSE_CMD"
+echo "Using Docker Compose command: ${COMPOSE_CMD[*]}"
 
 show_help() {
     echo "Usage: ./deploy.sh [options]"
@@ -75,7 +75,7 @@ fi
 
 if [ "$DOWN" = true ]; then
     echo "Stopping and removing containers..."
-    $COMPOSE_CMD down
+    "${COMPOSE_CMD[@]}" down
     exit 0
 fi
 
@@ -102,22 +102,22 @@ if [ "$PULL" = true ]; then
     done
 fi
 
-CMD="$COMPOSE_CMD --profile app up -d"
-
 if [ "$DB_ONLY" = true ]; then
-    CMD="$COMPOSE_CMD up -d db"
+    CMD=("${COMPOSE_CMD[@]}" --profile db up -d db)
+else
+    CMD=("${COMPOSE_CMD[@]}" --profile app up -d)
 fi
 
 if [ "$BUILD" = true ]; then
-    CMD="$CMD --build"
+    CMD+=("--build")
 fi
 
 if [ "$RECREATE" = true ]; then
-    CMD="$CMD --force-recreate"
+    CMD+=("--force-recreate")
 fi
 
-echo "Executing: $CMD"
-eval $CMD
+echo "Executing: ${CMD[*]}"
+"${CMD[@]}"
 
 if [ $? -eq 0 ]; then
     echo "Containers started successfully!"
@@ -128,7 +128,7 @@ fi
 
 if [ "$LOGS" = true ]; then
     echo "Following logs..."
-    $COMPOSE_CMD logs -f
+    "${COMPOSE_CMD[@]}" logs -f
 fi
 
 echo "Deployment completed successfully!"

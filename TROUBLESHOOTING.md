@@ -46,6 +46,29 @@ pnpm db:migrate
 pnpm test
 ```
 
+## Erro ao subir app com Docker
+
+Se aparecer erro de variável obrigatória ausente em `docker compose`, exporte:
+
+```bash
+export POSTGRES_USER=app_user
+export POSTGRES_PASSWORD=strong_db_password
+export POSTGRES_DB=app_db
+export DATABASE_URL=postgresql://app_user:strong_db_password@db:5432/app_db
+export JWT_SECRET=replace_with_32_plus_characters_secret
+export CORS_ORIGIN=https://api.example.com
+```
+
+## Migrations em produção
+
+O container da aplicação não executa migration automática em startup.
+
+Execute migrations antes do deploy:
+
+```bash
+pnpm db:migrate
+```
+
 ## WSL lento
 
 - Use WSL2.

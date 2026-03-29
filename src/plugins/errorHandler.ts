@@ -1,5 +1,6 @@
 import { FastifyError, FastifyInstance, FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
+import { config } from '../config/env';
 
 interface ErrorResponse {
   success: false;
@@ -21,11 +22,11 @@ const errorHandlerPlugin: FastifyPluginAsync = async (server: FastifyInstance) =
 
     const response: ErrorResponse = {
       success: false,
-      message: error.message || 'Internal Server Error',
+      message: statusCode >= 500 ? 'Internal Server Error' : (error.message || 'Request failed'),
       statusCode,
     };
 
-    if (process.env['NODE_ENV'] === 'development' && error.stack) {
+    if (config.nodeEnv === 'development' && statusCode < 500 && error.stack) {
       response.stack = error.stack;
     }
 

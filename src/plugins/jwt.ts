@@ -7,6 +7,8 @@ import { config } from '../config/env';
 interface JWTPayload {
   userId: number;
   email: string;
+  iss?: string;
+  aud?: string;
 }
 
 declare module '@fastify/jwt' {
@@ -26,7 +28,13 @@ const jwtPlugin: FastifyPluginAsync = async (server: FastifyInstance) => {
   server.register(fastifyJwt, {
     secret: config.jwtSecret,
     sign: {
-      expiresIn: config.jwtExpiresIn
+      expiresIn: config.jwtExpiresIn,
+      iss: config.jwtIssuer,
+      aud: config.jwtAudience
+    },
+    verify: {
+      allowedIss: config.jwtIssuer,
+      allowedAud: config.jwtAudience
     }
   });
 

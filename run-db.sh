@@ -1,10 +1,10 @@
 #!/bin/bash
 
 CONTAINER_NAME="local-postgres"
-DB_USER="admin"
-DB_PASSWORD="admin"
-DB_NAME="mydb"
-DB_PORT="5432"
+DB_USER="${DB_USER:-admin}"
+DB_NAME="${DB_NAME:-mydb}"
+DB_PORT="${DB_PORT:-5432}"
+DB_PASSWORD="${DB_PASSWORD:-$(tr -dc A-Za-z0-9 </dev/urandom | head -c 24)}"
 
 if [ "$(docker ps -aq -f name=$CONTAINER_NAME)" ]; then
     echo "Removing existing container..."

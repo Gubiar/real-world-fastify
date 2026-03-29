@@ -29,6 +29,20 @@ function getNumber(name: string, fallback: number): number {
   return parsed;
 }
 
+function getBoolean(name: string, fallback: boolean): boolean {
+  const raw = process.env[name];
+  if (raw === undefined || raw === '') {
+    return fallback;
+  }
+  if (raw === 'true') {
+    return true;
+  }
+  if (raw === 'false') {
+    return false;
+  }
+  throw new Error(`Environment variable ${name} must be true or false`);
+}
+
 function getNodeEnv(): NodeEnv {
   const value = getString('NODE_ENV', 'development');
   if (value === 'development' || value === 'test' || value === 'production') {
@@ -50,14 +64,30 @@ const nodeEnv = getNodeEnv();
 const corsRaw = getString('CORS_ORIGIN', '*');
 
 function parseCorsOrigin(value: string): CorsOrigin {
-  if (value === '*') {
+  if (value === '*' && nodeEnv !== 'production') {
     return true;
+  }
+  if (value === '*' && nodeEnv === 'production') {
+    throw new Error('CORS_ORIGIN wildcard is not allowed in production');
   }
   const origins = value.split(',').map(origin => origin.trim()).filter(Boolean);
   if (origins.length <= 1) {
-    return origins[0] || true;
+    return origins[0] || (nodeEnv === 'production' ? (() => { throw new Error('CORS_ORIGIN is required in production'); })() : true);
   }
   return origins;
+}
+
+function ensureStrongJwtSecret(secret: string): string {
+  if (nodeEnv === 'test') {
+    return secret;
+  }
+  if (secret.length < 32) {
+    throw new Error('JWT_SECRET must have at least 32 characters');
+  }
+  if (secret === 'super-secret-jwt-token') {
+    throw new Error('JWT_SECRET default value is not allowed');
+  }
+  return secret;
 }
 
 export const config = {
@@ -65,9 +95,13 @@ export const config = {
   port: getNumber('PORT', 3000),
   host: getString('HOST', '0.0.0.0'),
   databaseUrl: getString('DATABASE_URL'),
-  jwtSecret: getString('JWT_SECRET', nodeEnv === 'production' ? undefined : 'super-secret-jwt-token'),
+  jwtSecret: ensureStrongJwtSecret(getString('JWT_SECRET', nodeEnv === 'test' ? 'test-jwt-secret-for-testing-only' : undefined)),
   jwtExpiresIn: getString('JWT_EXPIRES_IN', '1d'),
+  jwtIssuer: getString('JWT_ISSUER', 'real-world-fastify'),
+  jwtAudience: getString('JWT_AUDIENCE', 'real-world-fastify-users'),
   corsOrigin: parseCorsOrigin(corsRaw),
+  enableDocs: getBoolean('ENABLE_DOCS', nodeEnv !== 'production'),
+  runMigrationsOnStartup: getBoolean('RUN_MIGRATIONS_ON_STARTUP', nodeEnv !== 'production'),
   logLevel: getLogLevel(),
   bcryptRounds: getNumber('BCRYPT_ROUNDS', 10),
   rateLimitMax: getNumber('RATE_LIMIT_MAX', 100),

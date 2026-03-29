@@ -12,9 +12,10 @@ wait_for_postgres() {
 
 if [ -n "$DATABASE_URL" ]; then
   wait_for_postgres
-  echo "Running database migrations..."
-  npx drizzle-kit migrate
-  echo "Migrations completed successfully!"
+  if [ "$RUN_MIGRATIONS_ON_STARTUP" = "true" ]; then
+    echo "Automatic migrations on startup are disabled for this image. Run migrations in a dedicated CI/CD job."
+    exit 1
+  fi
 fi
 
 exec "$@" 
