@@ -14,6 +14,7 @@ import { config } from './config/env';
 
 export function buildApp() {
   const server = fastify({
+    trustProxy: config.trustProxy,
     logger: {
       level: config.logLevel,
       redact: {

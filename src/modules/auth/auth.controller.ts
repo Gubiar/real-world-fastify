@@ -30,5 +30,6 @@ export async function loginHandler(
 } 
 
 export async function meHandler(request: FastifyRequest, reply: FastifyReply) {
-  return success(reply, request.user);
+  const { userId, email } = request.user;
+  return success(reply, { userId, email });
 }

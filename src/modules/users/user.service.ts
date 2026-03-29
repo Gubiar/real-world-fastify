@@ -6,11 +6,15 @@ import { config } from '../../config/env';
 import { AppError } from '../../utils/appError';
 import { HttpStatus } from '../../utils/httpStatusCodes';
 
+function normalizeEmail(email: string): string {
+  return email.toLowerCase().trim();
+}
+
 export async function findByEmail(
   server: FastifyInstance,
   email: string
 ): Promise<User | undefined> {
-  const result = await server.db.select().from(users).where(eq(users.email, email));
+  const result = await server.db.select().from(users).where(eq(users.email, normalizeEmail(email)));
   return result[0];
 }
 
@@ -31,7 +35,7 @@ export async function create(
   const hashedPassword = await bcrypt.hash(password, config.bcryptRounds);
 
   const [createdUser] = await server.db.insert(users).values({
-    email,
+    email: normalizeEmail(email),
     password: hashedPassword,
     name
   }).returning();

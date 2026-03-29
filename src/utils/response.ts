@@ -6,7 +6,7 @@ export function success<T>(reply: FastifyReply, data: T, status = HttpStatus.OK)
 }
 
 export function error(reply: FastifyReply, message: string, status = HttpStatus.INTERNAL_ERROR) {
-  return reply.code(status).send({ success: false, message });
+  return reply.code(status).send({ success: false, message, statusCode: status });
 }
 
 export function unauthorized(reply: FastifyReply, message = 'Unauthorized') {

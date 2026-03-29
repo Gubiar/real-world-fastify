@@ -70,6 +70,59 @@ describe('Auth Module', () => {
       expect(body.message).toContain('already exists');
     });
     
+    test('should fail to register user with duplicate email in different case', async () => {
+      await app.inject({
+        method: 'POST',
+        url: '/api/auth/register',
+        payload: {
+          email: 'CaseTest@Example.com',
+          password: 'Password123',
+          name: 'First User'
+        }
+      });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/auth/register',
+        payload: {
+          email: 'casetest@example.com',
+          password: 'Password456',
+          name: 'Second User'
+        }
+      });
+
+      expect(response.statusCode).toBe(400);
+      const body = JSON.parse(response.payload);
+      expect(body.success).toBe(false);
+      expect(body.message).toContain('already exists');
+    });
+
+    test('should login with email in different case than registered', async () => {
+      await app.inject({
+        method: 'POST',
+        url: '/api/auth/register',
+        payload: {
+          email: 'CaseLogin@Example.com',
+          password: 'Password123',
+          name: 'Case User'
+        }
+      });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/auth/login',
+        payload: {
+          email: 'caselogin@example.com',
+          password: 'Password123'
+        }
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.payload);
+      expect(body.success).toBe(true);
+      expect(body.data.user.email).toBe('caselogin@example.com');
+    });
+
     test('should fail with missing required fields', async () => {
       const response = await app.inject({
         method: 'POST',
