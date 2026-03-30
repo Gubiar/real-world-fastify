@@ -6,6 +6,10 @@ import bcrypt from "bcryptjs";
 dotenv.config();
 
 async function seed() {
+  if (process.env["NODE_ENV"] === "production") {
+    throw new Error("Seed must not run in production");
+  }
+
   const databaseUrl = process.env["DATABASE_URL"];
 
   if (!databaseUrl) {
@@ -14,7 +18,7 @@ async function seed() {
 
   const db = createDbConnection(databaseUrl);
 
-  const hashedPassword = await bcrypt.hash("Password123", 10);
+  const hashedPassword = await bcrypt.hash("S3ed!Dev#2025x", 10);
 
   await db.insert(users).values([
     {

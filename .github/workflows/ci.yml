@@ -53,6 +53,8 @@ jobs:
           NODE_ENV: test
           JWT_SECRET: test-jwt-secret-for-testing-only
           RUN_MIGRATIONS_ON_STARTUP: 'false'
+          RATE_LIMIT_MAX: '10000'
+          RATE_LIMIT_AUTH_MAX: '10000'
 
   audit:
     runs-on: ubuntu-latest

@@ -93,7 +93,7 @@ export function buildApp() {
 
   server.register(helmet, {
     global: true,
-    contentSecurityPolicy: false,
+    ...(config.enableDocs && { contentSecurityPolicy: false }),
   });
 
   server.register(cors, {

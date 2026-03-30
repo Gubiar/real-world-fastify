@@ -45,10 +45,14 @@ Para novas features:
 ## Security
 
 - JWT via `@fastify/jwt` com validação de `iss` e `aud`.
-- Rate limit global e mais restritivo em endpoints de auth.
-- Helmet e CORS registrados na construção da app.
+- Rate limit global aplicado a todas as rotas. Endpoints de auth possuem limites mais restritivos configurados por rota.
+- Helmet com CSP habilitada em produção (desabilitada em dev para Swagger UI). CORS registrado na construção da app.
 - `TRUST_PROXY` configurável via env para ambientes atrás de reverse proxy (afeta `request.ip` e rate limit).
 - Emails normalizados para lowercase para evitar duplicatas case-sensitive.
+- Login com comparação timing-safe contra enumeração de usuários.
+- Registro race-condition safe via insert-first + catch unique constraint (409 Conflict).
+- Endpoint `/me` consulta o banco para dados atualizados; rejeita tokens de usuários deletados.
+- Seed protegido contra execução em produção.
 
 ## Testing
 

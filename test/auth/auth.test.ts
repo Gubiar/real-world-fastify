@@ -50,6 +50,24 @@ describe("Auth Module", () => {
       expect(body.data.id).toBeDefined();
     });
 
+    test("should include timestamps in register response", async () => {
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/auth/register",
+        payload: {
+          email: "timestamps@example.com",
+          password: "Password123",
+          name: "Timestamps User",
+        },
+      });
+
+      expect(response.statusCode).toBe(201);
+      const body = JSON.parse(response.payload);
+      expect(body.data.createdAt).toBeDefined();
+      expect(body.data.updatedAt).toBeDefined();
+      expect(new Date(body.data.createdAt).getTime()).not.toBeNaN();
+    });
+
     test("should fail to register user with duplicate email", async () => {
       await app.inject({
         method: "POST",
@@ -71,10 +89,10 @@ describe("Auth Module", () => {
         },
       });
 
-      expect(response.statusCode).toBe(400);
+      expect(response.statusCode).toBe(409);
       const body = JSON.parse(response.payload);
       expect(body.success).toBe(false);
-      expect(body.message).toContain("already exists");
+      expect(body.message).toContain("already in use");
     });
 
     test("should fail to register user with duplicate email in different case", async () => {
@@ -98,10 +116,10 @@ describe("Auth Module", () => {
         },
       });
 
-      expect(response.statusCode).toBe(400);
+      expect(response.statusCode).toBe(409);
       const body = JSON.parse(response.payload);
       expect(body.success).toBe(false);
-      expect(body.message).toContain("already exists");
+      expect(body.message).toContain("already in use");
     });
 
     test("should login with email in different case than registered", async () => {
@@ -297,7 +315,43 @@ describe("Auth Module", () => {
       const body = JSON.parse(response.payload);
       expect(body.success).toBe(true);
       expect(body.data).toBeDefined();
+      expect(body.data.id).toBeDefined();
       expect(body.data.email).toBe("protected@example.com");
+      expect(body.data.name).toBe("Protected User");
+      expect(body.data.createdAt).toBeDefined();
+      expect(body.data.updatedAt).toBeDefined();
+      expect(body.data.password).toBeUndefined();
+    });
+
+    test("should return 401 when user was deleted after login", async () => {
+      await app.db.delete(users);
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/auth/me",
+        headers: {
+          authorization: `Bearer ${validToken}`,
+        },
+      });
+
+      expect(response.statusCode).toBe(401);
+      const body = JSON.parse(response.payload);
+      expect(body.success).toBe(false);
+      expect(body.message).toContain("no longer exists");
+    });
+
+    test("should return fresh data from database", async () => {
+      const meResponse = await app.inject({
+        method: "GET",
+        url: "/api/auth/me",
+        headers: {
+          authorization: `Bearer ${validToken}`,
+        },
+      });
+
+      const body = JSON.parse(meResponse.payload);
+      expect(body.data.email).toBe("protected@example.com");
+      expect(body.data.name).toBe("Protected User");
     });
 
     test("should reject access without token", async () => {

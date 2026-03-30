@@ -8,6 +8,7 @@ import {
   RegisterInput,
   RegisterResponse,
 } from "./auth.schema";
+import { config } from "../../config/env";
 
 export function registerAuthRoutes(
   server: FastifyInstance,
@@ -19,6 +20,12 @@ export function registerAuthRoutes(
       fastifyTypebox.post(
         "/register",
         {
+          config: {
+            rateLimit: {
+              max: config.rateLimitAuthMax,
+              timeWindow: config.rateLimitAuthWindow,
+            },
+          },
           schema: {
             body: RegisterInput,
             response: {
@@ -34,6 +41,12 @@ export function registerAuthRoutes(
       fastifyTypebox.post(
         "/login",
         {
+          config: {
+            rateLimit: {
+              max: config.rateLimitAuthMax,
+              timeWindow: config.rateLimitAuthWindow,
+            },
+          },
           schema: {
             body: LoginInput,
             response: {
@@ -54,7 +67,7 @@ export function registerAuthRoutes(
             response: {
               200: MeResponse,
             },
-            description: "Get authenticated user payload",
+            description: "Get authenticated user profile",
             tags: ["authentication"],
             security: [{ bearerAuth: [] }],
           },

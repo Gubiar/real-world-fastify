@@ -16,15 +16,6 @@ export const RegisterInput = Type.Object({
 
 export type RegisterInputType = Static<typeof RegisterInput>;
 
-export const RegisterResponse = Type.Object({
-  success: Type.Boolean(),
-  data: Type.Object({
-    id: Type.Number(),
-    email: Type.String(),
-    name: Type.String(),
-  }),
-});
-
 export const LoginInput = Type.Object({
   email: Type.String({ format: "email", minLength: 5, maxLength: 255 }),
   password: Type.String({ minLength: 8, maxLength: 100 }),
@@ -32,22 +23,28 @@ export const LoginInput = Type.Object({
 
 export type LoginInputType = Static<typeof LoginInput>;
 
+export const UserResponse = Type.Object({
+  id: Type.Number(),
+  email: Type.String(),
+  name: Type.String(),
+  createdAt: Type.String({ format: "date-time" }),
+  updatedAt: Type.String({ format: "date-time" }),
+});
+
+export const RegisterResponse = Type.Object({
+  success: Type.Boolean(),
+  data: UserResponse,
+});
+
 export const LoginResponse = Type.Object({
   success: Type.Boolean(),
   data: Type.Object({
     token: Type.String(),
-    user: Type.Object({
-      id: Type.Number(),
-      email: Type.String(),
-      name: Type.String(),
-    }),
+    user: UserResponse,
   }),
 });
 
 export const MeResponse = Type.Object({
   success: Type.Boolean(),
-  data: Type.Object({
-    userId: Type.Number(),
-    email: Type.String(),
-  }),
+  data: UserResponse,
 });
