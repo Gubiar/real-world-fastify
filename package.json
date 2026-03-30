@@ -19,7 +19,10 @@
     "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
     "test": "tsx scripts/run-tests.ts",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "docker:up": "docker compose --profile app up -d --build",
+    "docker:down": "docker compose --profile app down",
+    "docker:db": "docker compose --profile db up -d"
   },
   "dependencies": {
     "@fastify/cors": "^11.2.0",
