@@ -1,22 +1,14 @@
-function hasCode23505(value: unknown): boolean {
-  return (
-    value !== null &&
-    typeof value === "object" &&
-    "code" in value &&
-    (value as { code: string }).code === "23505"
-  );
-}
+import postgres from "postgres";
+
+const UNIQUE_VIOLATION = "23505";
 
 export function isUniqueViolation(error: unknown): boolean {
-  if (hasCode23505(error)) return true;
+  if (error instanceof postgres.PostgresError) {
+    return error.code === UNIQUE_VIOLATION;
+  }
 
-  if (
-    error !== null &&
-    typeof error === "object" &&
-    "cause" in error &&
-    hasCode23505((error as { cause: unknown }).cause)
-  ) {
-    return true;
+  if (error instanceof Error && error.cause instanceof postgres.PostgresError) {
+    return error.cause.code === UNIQUE_VIOLATION;
   }
 
   return false;
