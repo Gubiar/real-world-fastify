@@ -48,22 +48,22 @@ Nesse caso, confirme que o banco está acessível e que as migrations foram apli
 
 ## Erro ao subir app com Docker
 
-Se aparecer erro de variável obrigatória ausente em `docker compose`, exporte:
+O `docker-compose.yml` constrói a `DATABASE_URL` automaticamente a partir de `POSTGRES_USER`, `POSTGRES_PASSWORD` e `POSTGRES_DB`. Não é necessário definir `DATABASE_URL` manualmente.
 
-```bash
-export POSTGRES_USER=app_user
-export POSTGRES_PASSWORD=strong_db_password
-export POSTGRES_DB=app_db
-export DATABASE_URL=postgresql://app_user:strong_db_password@db:5432/app_db
-export JWT_SECRET=replace_with_32_plus_characters_secret
-export CORS_ORIGIN=https://api.example.com
+Se aparecer erro de variável obrigatória ausente, garanta que o `.env` contém:
+
+```env
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=fastify_db
+JWT_SECRET=replace_with_32_plus_characters_secret
 ```
 
 ## Migrations em produção
 
-Por padrão, o container da aplicação não executa migrations no startup (`RUN_MIGRATIONS_ON_STARTUP=false`).
+Por padrão no Docker Compose, migrations rodam automaticamente no startup (`RUN_MIGRATIONS_ON_STARTUP=true`). Isso facilita o setup local.
 
-É possível habilitar via `RUN_MIGRATIONS_ON_STARTUP=true`, mas o recomendado é rodar migrations em job dedicado antes do deploy:
+Em produção, desabilite (`RUN_MIGRATIONS_ON_STARTUP=false`) e rode migrations em job dedicado antes do deploy:
 
 ```bash
 pnpm db:migrate

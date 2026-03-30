@@ -54,6 +54,12 @@ Para novas features:
 - Endpoint `/me` consulta o banco para dados atualizados; rejeita tokens de usuários deletados.
 - Seed protegido contra execução em produção.
 
+## Docker
+
+- `docker-compose.yml` constrói `DATABASE_URL` automaticamente a partir de `POSTGRES_USER`, `POSTGRES_PASSWORD` e `POSTGRES_DB` com hostname interno `db`.
+- Migrations rodam automaticamente no startup por padrão (`RUN_MIGRATIONS_ON_STARTUP=true`). Desabilitar em produção.
+- `./deploy.sh --build` sobe app + banco. `./deploy.sh --db-only` sobe apenas o banco para desenvolvimento local.
+
 ## Testing
 
 - Jest com testes em `test/`.

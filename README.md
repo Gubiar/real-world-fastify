@@ -104,7 +104,7 @@ Docs em `http://localhost:3000/docs`
 - Em produção, `ENABLE_DOCS` é desabilitado por padrão.
 - `TRUST_PROXY` deve ser `true` quando a aplicação rodar atrás de reverse proxy (Nginx, Cloudflare, ALB). Afeta `request.ip` e rate limit.
 - `BCRYPT_ROUNDS` é configurável via env (default `10`). Aumentar em produção conforme capacidade do hardware.
-- `RUN_MIGRATIONS_ON_STARTUP` deve permanecer `false` no container da app em produção. Migrations devem rodar em job dedicado antes do deploy.
+- `RUN_MIGRATIONS_ON_STARTUP` é `true` por padrão no Docker Compose para facilitar setup local. Em produção, desabilite e rode migrations em job dedicado antes do deploy.
 - Emails são normalizados para lowercase na criação e busca de usuários.
 - Login usa comparação timing-safe: tempo de resposta é constante independentemente de o email existir ou não, prevenindo enumeração de usuários por timing attack.
 - Registro é race-condition safe: usa insert direto com captura de violação de unique constraint (409 Conflict), eliminando TOCTOU.
@@ -156,15 +156,17 @@ Docs em `http://localhost:3000/docs`
 
 ## Docker
 
-As variáveis `POSTGRES_USER`, `POSTGRES_PASSWORD` e `POSTGRES_DB` são obrigatórias para qualquer perfil do Docker Compose.
+O `docker-compose.yml` constrói a `DATABASE_URL` automaticamente a partir de `POSTGRES_USER`, `POSTGRES_PASSWORD` e `POSTGRES_DB`, usando o hostname interno do serviço (`db`). Não é necessário definir `DATABASE_URL` manualmente para Docker.
 
-Banco apenas:
+Migrations rodam automaticamente no startup (`RUN_MIGRATIONS_ON_STARTUP=true` por padrão no compose). Em produção, desabilite e rode em job dedicado antes do deploy.
+
+Banco apenas (para desenvolvimento local com `pnpm dev`):
 
 ```bash
 ./deploy.sh --db-only
 ```
 
-Aplicação + banco:
+Aplicação completa (app + banco, ambiente similar a produção):
 
 ```bash
 ./deploy.sh --build
@@ -176,16 +178,15 @@ Parar tudo:
 ./deploy.sh --down
 ```
 
-Para subir aplicação + banco em perfil `app`, exporte variáveis obrigatórias antes:
+Para customizar credenciais ou habilitar Swagger UI, ajuste as variáveis no `.env`:
 
-```bash
-export POSTGRES_USER=app_user
-export POSTGRES_PASSWORD=strong_db_password
-export POSTGRES_DB=app_db
-export DATABASE_URL=postgresql://app_user:strong_db_password@db:5432/app_db
-export JWT_SECRET=replace_with_32_plus_characters_secret
-export CORS_ORIGIN=https://api.example.com,https://admin.example.com
-./deploy.sh --build
+```env
+POSTGRES_USER=app_user
+POSTGRES_PASSWORD=strong_db_password
+POSTGRES_DB=app_db
+JWT_SECRET=replace_with_32_plus_characters_secret
+CORS_ORIGIN=https://api.example.com,https://admin.example.com
+ENABLE_DOCS=true
 ```
 
 Para executar migrations em produção, rode um job dedicado:
