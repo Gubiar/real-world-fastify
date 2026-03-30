@@ -41,6 +41,7 @@ src/
     rateLimit.ts
   utils/
     appError.ts
+    database.ts
     httpStatusCodes.ts
     response.ts
     schemaErrorFormatter.ts
@@ -105,6 +106,12 @@ Docs em `http://localhost:3000/docs`
 - `BCRYPT_ROUNDS` é configurável via env (default `10`). Aumentar em produção conforme capacidade do hardware.
 - `RUN_MIGRATIONS_ON_STARTUP` deve permanecer `false` no container da app em produção. Migrations devem rodar em job dedicado antes do deploy.
 - Emails são normalizados para lowercase na criação e busca de usuários.
+- Login usa comparação timing-safe: tempo de resposta é constante independentemente de o email existir ou não, prevenindo enumeração de usuários por timing attack.
+- Registro é race-condition safe: usa insert direto com captura de violação de unique constraint (409 Conflict), eliminando TOCTOU.
+- Rate limit global aplicado a todas as rotas. Endpoints de auth (`/login`, `/register`) possuem limites mais restritivos configurados por rota.
+- Content Security Policy (CSP) do Helmet é habilitada em produção (quando `ENABLE_DOCS=false`). Em desenvolvimento, CSP é desabilitada para compatibilidade com Swagger UI.
+- O seed (`db:seed`) possui guard contra execução em produção.
+- O endpoint `/me` consulta o banco para retornar dados atualizados do usuário, garantindo que tokens de usuários deletados sejam rejeitados.
 
 ## Variáveis de ambiente
 

@@ -103,8 +103,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status code is 201 or 400 (duplicate)', function () {",
-                  "  pm.expect([201, 400]).to.include(pm.response.code);",
+                  "pm.test('Status code is 201 or 409 (duplicate)', function () {",
+                  "  pm.expect([201, 409]).to.include(pm.response.code);",
                   "});",
                   "",
                   "var jsonData = pm.response.json();",
@@ -206,10 +206,13 @@
                   "});",
                   "",
                   "var jsonData = pm.response.json();",
-                  "pm.test('/me returns authenticated user payload', function () {",
+                  "pm.test('/me returns authenticated user profile', function () {",
                   "  pm.expect(jsonData.success).to.eql(true);",
                   "  pm.expect(jsonData.data.email).to.eql(pm.collectionVariables.get('email'));",
-                  "  pm.expect(jsonData.data.userId).to.be.a('number');",
+                  "  pm.expect(jsonData.data.id).to.be.a('number');",
+                  "  pm.expect(jsonData.data.name).to.be.a('string');",
+                  "  pm.expect(jsonData.data.createdAt).to.be.a('string');",
+                  "  pm.expect(jsonData.data.updatedAt).to.be.a('string');",
                   "});"
                 ]
               }

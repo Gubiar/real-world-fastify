@@ -2,8 +2,8 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { LoginInputType, RegisterInputType } from "./auth.schema";
 import { validateUser, generateJwt, registerUser } from "./auth.service";
 import { HttpStatus } from "../../utils/httpStatusCodes";
-import { error, success } from "../../utils/response";
-import { sanitizeUser } from "../users/user.service";
+import { error, success, unauthorized } from "../../utils/response";
+import { sanitizeUser, findById } from "../users/user.service";
 
 export async function registerHandler(
   request: FastifyRequest<{ Body: RegisterInputType }>,
@@ -30,6 +30,10 @@ export async function loginHandler(
 }
 
 export async function meHandler(request: FastifyRequest, reply: FastifyReply) {
-  const { userId, email } = request.user;
-  return success(reply, { userId, email });
+  const { userId } = request.user;
+  const user = await findById(request.server, userId);
+  if (!user) {
+    return unauthorized(reply, "User no longer exists");
+  }
+  return success(reply, sanitizeUser(user));
 }
