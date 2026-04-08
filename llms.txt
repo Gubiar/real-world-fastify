@@ -57,8 +57,9 @@ Para novas features:
 ## Docker
 
 - `docker-compose.yml` constrói `DATABASE_URL` automaticamente a partir de `POSTGRES_USER`, `POSTGRES_PASSWORD` e `POSTGRES_DB` com hostname interno `db`.
-- Migrations rodam automaticamente no startup por padrão (`RUN_MIGRATIONS_ON_STARTUP=true`). Desabilitar em produção.
-- `./deploy.sh --build` sobe app + banco. `./deploy.sh --db-only` sobe apenas o banco para desenvolvimento local.
+- Por padrão o PostgreSQL não expõe porta no host; `docker-compose.development.yml` adiciona `127.0.0.1:5432` e `ENABLE_DOCS=true` no serviço `app`. `pnpm docker:up` (seguro) vs `pnpm docker:up:dev` (dev).
+- No `docker-compose.yml`, `RUN_MIGRATIONS_ON_STARTUP` e `ENABLE_DOCS` são fixos no YAML (`true` e `false`) no serviço `app`. Desabilitar migrations no startup em produção real.
+- `./deploy.sh --build` sobe app + banco sem expor o Postgres; `./deploy.sh --build --dev` ou `./deploy.sh --db-only` expõem o banco em localhost.
 
 ## Testing
 
@@ -66,4 +67,4 @@ Para novas features:
 - Setup global em `test/setup.ts`.
 - Testes HTTP usando `app.inject()`.
 - `pnpm test` sobe container Postgres efêmero automaticamente via `scripts/run-tests.ts` (requer Docker).
-- CI via GitHub Actions (`.github/workflows/ci.yml`): lint, test e audit em paralelo.
+- CI via GitHub Actions (`.github/workflows/ci.yml`): lint, test, audit e validação/build Docker em paralelo.

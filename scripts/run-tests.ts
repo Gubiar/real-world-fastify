@@ -95,7 +95,7 @@ function main(): void {
       'POSTGRES_DB=fastify_db',
       '-p',
       '127.0.0.1::5432',
-      'postgres:16.0-alpine'
+      'postgres:16-alpine'
     ]);
 
     waitForDbHealthy(containerName, dockerCmd);

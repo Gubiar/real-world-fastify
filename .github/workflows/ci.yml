@@ -67,3 +67,20 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm audit --prod
+
+  docker:
+    runs-on: ubuntu-latest
+    env:
+      POSTGRES_USER: ci_user
+      POSTGRES_PASSWORD: ci_password
+      POSTGRES_DB: ci_db
+      JWT_SECRET: ci-jwt-secret-minimum-32-characters-long
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Compose (secure stack)
+        run: docker compose --profile app -f docker-compose.yml config >/dev/null
+      - name: Validate Compose (development override)
+        run: docker compose --profile app -f docker-compose.yml -f docker-compose.development.yml config >/dev/null
+      - uses: docker/setup-buildx-action@v3
+      - name: Build application image
+        run: docker build -t fastify-auth-boilerplate:ci .

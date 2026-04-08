@@ -15,6 +15,9 @@ else
     exit 1
 fi
 
+COMPOSE_SECURE=("${COMPOSE_CMD[@]}" -f docker-compose.yml)
+COMPOSE_WITH_DEV=("${COMPOSE_CMD[@]}" -f docker-compose.yml -f docker-compose.development.yml)
+
 echo "Using Docker Compose command: ${COMPOSE_CMD[*]}"
 
 show_help() {
@@ -25,7 +28,8 @@ show_help() {
     echo "  --down            Stop and remove containers, networks, and volumes"
     echo "  --logs            Follow the logs after starting the containers"
     echo "  --pull            Pull latest images (with retry logic)"
-    echo "  --db-only         Start only the database service"
+    echo "  --db-only         Start only the database service (PostgreSQL on 127.0.0.1:5432)"
+    echo "  --dev             With app stack: also expose PostgreSQL on 127.0.0.1:5432 for host tools"
     echo "  --help            Show this help message"
 }
 
@@ -35,6 +39,7 @@ DOWN=false
 LOGS=false
 PULL=false
 DB_ONLY=false
+DEV=false
 
 for arg in "$@"; do
     case $arg in
@@ -56,6 +61,9 @@ for arg in "$@"; do
         --db-only)
             DB_ONLY=true
             ;;
+        --dev)
+            DEV=true
+            ;;
         --help)
             show_help
             exit 0
@@ -75,7 +83,7 @@ fi
 
 if [ "$DOWN" = true ]; then
     echo "Stopping and removing containers..."
-    "${COMPOSE_CMD[@]}" down
+    "${COMPOSE_WITH_DEV[@]}" down
     exit 0
 fi
 
@@ -85,7 +93,7 @@ if [ "$PULL" = true ]; then
     retry_count=0
 
     while [ $retry_count -lt $max_retries ]; do
-        if docker pull node:22-alpine && docker pull postgres:16.0-alpine; then
+        if docker pull node:22-alpine && docker pull postgres:16-alpine; then
             echo "Successfully pulled base images."
             break
         else
@@ -103,9 +111,11 @@ if [ "$PULL" = true ]; then
 fi
 
 if [ "$DB_ONLY" = true ]; then
-    CMD=("${COMPOSE_CMD[@]}" --profile db up -d db)
+    CMD=("${COMPOSE_WITH_DEV[@]}" --profile db up -d db)
+elif [ "$DEV" = true ]; then
+    CMD=("${COMPOSE_WITH_DEV[@]}" --profile app up -d)
 else
-    CMD=("${COMPOSE_CMD[@]}" --profile app up -d)
+    CMD=("${COMPOSE_SECURE[@]}" --profile app up -d)
 fi
 
 if [ "$BUILD" = true ]; then
@@ -128,7 +138,11 @@ fi
 
 if [ "$LOGS" = true ]; then
     echo "Following logs..."
-    "${COMPOSE_CMD[@]}" logs -f
+    if [ "$DB_ONLY" = true ] || [ "$DEV" = true ]; then
+        "${COMPOSE_WITH_DEV[@]}" logs -f
+    else
+        "${COMPOSE_SECURE[@]}" logs -f
+    fi
 fi
 
 echo "Deployment completed successfully!"

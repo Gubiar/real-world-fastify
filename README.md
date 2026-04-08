@@ -11,7 +11,7 @@ Boilerplate de back-end com Fastify + TypeScript + Drizzle ORM, com foco em base
 - JWT com `@fastify/jwt`
 - Jest para testes de integração
 - Docker e Docker Compose
-- GitHub Actions CI (lint, test, audit)
+- GitHub Actions CI (lint, test, audit, docker)
 
 ## Estrutura
 
@@ -56,6 +56,11 @@ test/
 .github/
   workflows/
     ci.yml
+Dockerfile
+docker-compose.yml
+docker-compose.development.yml
+deploy.sh
+run-db.sh
 ```
 
 ## Requisitos
@@ -78,6 +83,8 @@ pnpm install
 ```bash
 cp sample.env .env
 ```
+
+PowerShell: `Copy-Item sample.env .env`
 
 3. Ajuste o `DATABASE_URL` no `.env`.
 
@@ -104,7 +111,7 @@ Docs em `http://localhost:3000/docs`
 - Em produção, `ENABLE_DOCS` é desabilitado por padrão.
 - `TRUST_PROXY` deve ser `true` quando a aplicação rodar atrás de reverse proxy (Nginx, Cloudflare, ALB). Afeta `request.ip` e rate limit.
 - `BCRYPT_ROUNDS` é configurável via env (default `10`). Aumentar em produção conforme capacidade do hardware.
-- `RUN_MIGRATIONS_ON_STARTUP` é `true` por padrão no Docker Compose para facilitar setup local. Em produção, desabilite e rode migrations em job dedicado antes do deploy.
+- No `docker-compose.yml`, `RUN_MIGRATIONS_ON_STARTUP` e `ENABLE_DOCS` têm valores fixos (`true` e `false`) para não serem sobrescritos por variáveis globais do sistema. Em deploy real, desabilite migrations no startup e rode-as em job dedicado; use `docker-compose.override.yml` (gitignored) se precisar ajustar o Compose localmente.
 - Emails são normalizados para lowercase na criação e busca de usuários.
 - Login usa comparação timing-safe: tempo de resposta é constante independentemente de o email existir ou não, prevenindo enumeração de usuários por timing attack.
 - Registro é race-condition safe: usa insert direto com captura de violação de unique constraint (409 Conflict), eliminando TOCTOU.
@@ -126,8 +133,8 @@ Docs em `http://localhost:3000/docs`
 | `JWT_ISSUER` | Não | `real-world-fastify` | Issuer do JWT |
 | `JWT_AUDIENCE` | Não | `real-world-fastify-users` | Audience do JWT |
 | `CORS_ORIGIN` | Não | `*` (dev) | Origens permitidas (comma-separated) |
-| `ENABLE_DOCS` | Não | `true` (dev) / `false` (prod) | Habilita Swagger UI em `/docs` |
-| `RUN_MIGRATIONS_ON_STARTUP` | Não | `true` (dev) / `false` (prod) | Roda migrations ao iniciar |
+| `ENABLE_DOCS` | Não | `true` (dev) / `false` (prod) | Habilita Swagger UI em `/docs` (no `docker-compose.yml` do repo o valor é `false` fixo; `docker-compose.development.yml` usa `true`) |
+| `RUN_MIGRATIONS_ON_STARTUP` | Não | `true` (dev) / `false` (prod) | Roda migrations ao iniciar (no `docker-compose.yml` do repo o valor é `true` fixo) |
 | `TRUST_PROXY` | Não | `false` | Habilita trust proxy no Fastify |
 | `LOG_LEVEL` | Não | `info` | Nível de log Pino |
 | `BCRYPT_ROUNDS` | Não | `10` | Rounds de hash bcrypt |
@@ -135,6 +142,7 @@ Docs em `http://localhost:3000/docs`
 | `RATE_LIMIT_WINDOW` | Não | `1 minute` | Janela de rate limit global |
 | `RATE_LIMIT_AUTH_MAX` | Não | `5` | Requisições por janela (auth) |
 | `RATE_LIMIT_AUTH_WINDOW` | Não | `1 minute` | Janela de rate limit auth |
+| `DB_POOL_MAX` | Não | `10` | Tamanho máximo do pool de conexões PostgreSQL |
 
 ## Scripts
 
@@ -153,24 +161,35 @@ Docs em `http://localhost:3000/docs`
 - `pnpm db:push`: aplica schema sem migration
 - `pnpm db:studio`: abre Drizzle Studio
 - `pnpm db:seed`: popula dados de exemplo
+- `pnpm docker:up` / `pnpm docker:up:dev` / `pnpm docker:down` / `pnpm docker:db`: Compose seguro, Compose com Postgres em localhost, parar stack, só banco com porta local
 
 ## Docker
 
-O `docker-compose.yml` constrói a `DATABASE_URL` automaticamente a partir de `POSTGRES_USER`, `POSTGRES_PASSWORD` e `POSTGRES_DB`, usando o hostname interno do serviço (`db`). Não é necessário definir `DATABASE_URL` manualmente para Docker.
+O `docker compose` lê o arquivo `.env` na raiz do projeto para interpolar variáveis. Defina `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` e `JWT_SECRET` (mínimo 32 caracteres) no `.env` (pode partir do `sample.env`). O serviço `app` recebe `DATABASE_URL` montada a partir desses dados com hostname interno `db`; não é necessário repetir `DATABASE_URL` no `.env` para a stack Docker.
 
-Migrations rodam automaticamente no startup (`RUN_MIGRATIONS_ON_STARTUP=true` por padrão no compose). Em produção, desabilite e rode em job dedicado antes do deploy.
+Por padrão o PostgreSQL **não** publica porta no host: só o container da API na rede `app-network` alcança o banco. O `docker-compose.yml` fixa `ENABLE_DOCS=false` e `RUN_MIGRATIONS_ON_STARTUP=true` no serviço `app`. O arquivo `docker-compose.development.yml` expõe `127.0.0.1:5432` no Postgres e define `ENABLE_DOCS=true` no `app` para uma stack mais próxima do dia a dia de desenvolvimento.
 
-Banco apenas (para desenvolvimento local com `pnpm dev`):
+Migrations rodam no startup neste Compose por padrão. Em produção, desabilite migrations no startup (override ou orquestrador) e rode-as em job dedicado antes do deploy.
+
+Banco apenas com porta local (para desenvolvimento com `pnpm dev`):
 
 ```bash
 ./deploy.sh --db-only
 ```
 
-Aplicação completa (app + banco, ambiente similar a produção):
+Aplicação completa sem expor o banco ao host (recomendado para produção / homologação segura):
 
 ```bash
 ./deploy.sh --build
 ```
+
+Mesma stack com PostgreSQL em `127.0.0.1:5432`:
+
+```bash
+./deploy.sh --build --dev
+```
+
+Equivalente com pnpm: `pnpm docker:up` (seguro) e `pnpm docker:up:dev` (Postgres em localhost + Swagger habilitado no container).
 
 Parar tudo:
 
@@ -178,16 +197,11 @@ Parar tudo:
 ./deploy.sh --down
 ```
 
-Para customizar credenciais ou habilitar Swagger UI, ajuste as variáveis no `.env`:
+O script `deploy.sh` é Bash (Git Bash ou WSL no Windows). No PowerShell use os comandos `pnpm docker:*` acima.
 
-```env
-POSTGRES_USER=app_user
-POSTGRES_PASSWORD=strong_db_password
-POSTGRES_DB=app_db
-JWT_SECRET=replace_with_32_plus_characters_secret
-CORS_ORIGIN=https://api.example.com,https://admin.example.com
-ENABLE_DOCS=true
-```
+Credenciais e `JWT_SECRET` vão no `.env`. Senhas com caracteres especiais na URL do Postgres devem ser codificadas (percent-encoding) se você montar `DATABASE_URL` manualmente; para Compose, use senhas alfanuméricas nos campos `POSTGRES_*` ou consulte a documentação do PostgreSQL sobre connection URIs.
+
+Para sobrescrever só o Compose localmente, crie `docker-compose.override.yml` (está no `.gitignore`).
 
 Para executar migrations em produção, rode um job dedicado:
 
@@ -197,11 +211,12 @@ pnpm db:migrate
 
 ## CI
 
-A pipeline GitHub Actions (`.github/workflows/ci.yml`) roda em push e PR na branch `master` com 3 jobs paralelos:
+A pipeline GitHub Actions (`.github/workflows/ci.yml`) roda em push e PR na branch `master` com jobs paralelos:
 
 - **lint**: `pnpm lint` + `pnpm format:check`
 - **test**: Postgres via service container, `pnpm db:migrate` + `jest`
 - **audit**: `pnpm audit --prod` para vulnerabilidades em dependências
+- **docker**: validação de `docker compose config` (stack segura e override de desenvolvimento) e build da imagem da aplicação
 
 ## Padrões do projeto
 
@@ -224,4 +239,10 @@ Para rodar jest manualmente contra um banco já existente:
 
 ```bash
 DATABASE_URL=postgresql://... pnpm exec jest
+```
+
+PowerShell:
+
+```powershell
+$env:DATABASE_URL = "postgresql://usuario:senha@localhost:5432/banco"; pnpm exec jest
 ```
