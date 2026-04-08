@@ -4,6 +4,9 @@
   "description": "Production-ready Fastify boilerplate with Drizzle ORM and authentication",
   "main": "dist/src/server.js",
   "packageManager": "pnpm@10.33.0",
+    "engines": {
+    "node": ">=18.18.0"
+  },
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
@@ -67,7 +70,8 @@
       "esbuild": ">=0.25.0",
       "hono": ">=4.12.7",
       "lodash": ">=4.18.0",
-      "valibot": ">=1.2.0"
+      "valibot": ">=1.2.0",
+      "fast-jwt":">=6.2.0"
     }
   }
 }
