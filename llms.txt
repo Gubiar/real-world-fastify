@@ -1,40 +1,40 @@
 # Real-World Fastify Boilerplate - LLM Guide
 
-## Overview
+## Visão geral
 
-Projeto de API com Fastify + TypeScript + Drizzle ORM para PostgreSQL.
+API com Fastify + TypeScript + Drizzle ORM para PostgreSQL. O `sample.env` alinha `DATABASE_URL` com `POSTGRES_*` para uso com `pnpm docker:db` em `localhost:5432`.
 
-## Core Rules
+## Regras principais
 
 1. Manter type-safety.
-2. Seguir padrão modular por feature.
+2. Seguir padrão modular por funcionalidade.
 3. Reaproveitar `buildApp()` para testes e integrações.
 4. Usar `config/env.ts` para qualquer acesso a variáveis de ambiente.
-5. Usar `AppError` para erros de domínio e deixar o plugin global tratar resposta.
+5. Usar `AppError` para erros de domínio e deixar o plugin global tratar a resposta.
 6. Emails devem ser normalizados para lowercase via `normalizeEmail()` em `user.service.ts` antes de qualquer persistência ou busca.
 
-## Runtime Entry Points
+## Pontos de entrada
 
 - `src/app.ts`: expõe `buildApp()` com plugins, rotas e configuração.
-- `src/server.ts`: inicia servidor HTTP com graceful shutdown (`SIGINT`, `SIGTERM`, `uncaughtException`, `unhandledRejection`). Erros fatais saem com exit code 1.
+- `src/server.ts`: inicia o servidor HTTP com encerramento gracioso (`SIGINT`, `SIGTERM`, `uncaughtException`, `unhandledRejection`). Erros fatais encerram com código 1.
 
-## Module Pattern
+## Padrão de módulo
 
-Para novas features:
+Para novas funcionalidades:
 
 - `<feature>.schema.ts`
 - `<feature>.service.ts`
 - `<feature>.controller.ts`
 - `<feature>.route.ts`
 
-## API Conventions
+## Convenções de API
 
-- Request/response schema com TypeBox.
-- Resposta de sucesso: `success(reply, data, status?)` retorna `{ success: true, data }`.
-- Resposta de erro esperada: `error(reply, message, status?)` retorna `{ success: false, message, statusCode }`.
-- Erros via `AppError` com status < 500 expõem a mensagem ao cliente. Status >= 500 sempre retorna `"Internal Server Error"`.
+- Request/response com TypeBox.
+- Sucesso: `success(reply, data, status?)` retorna `{ success: true, data }`.
+- Erro esperado: `error(reply, message, status?)` retorna `{ success: false, message, statusCode }`.
+- Erros via `AppError` com status menor que 500 expõem a mensagem ao cliente. Status 500 ou superior retornam sempre `"Internal Server Error"`.
 
-## Database
+## Banco de dados
 
 - ORM: Drizzle.
 - Config: `drizzle.config.ts`.
@@ -42,28 +42,29 @@ Para novas features:
 - Migrations: `src/db/migrations`.
 - `RUN_MIGRATIONS_ON_STARTUP` controla execução automática de migrations no plugin `drizzle.ts`.
 
-## Security
+## Segurança
 
 - JWT via `@fastify/jwt` com validação de `iss` e `aud`.
-- Rate limit global aplicado a todas as rotas. Endpoints de auth possuem limites mais restritivos configurados por rota.
-- Helmet com CSP habilitada em produção (desabilitada em dev para Swagger UI). CORS registrado na construção da app.
-- `TRUST_PROXY` configurável via env para ambientes atrás de reverse proxy (afeta `request.ip` e rate limit).
-- Emails normalizados para lowercase para evitar duplicatas case-sensitive.
-- Login com comparação timing-safe contra enumeração de usuários.
-- Registro race-condition safe via insert-first + catch unique constraint (409 Conflict).
-- Endpoint `/me` consulta o banco para dados atualizados; rejeita tokens de usuários deletados.
-- Seed protegido contra execução em produção.
+- Rate limit global; rotas de auth têm limites mais restritivos.
+- Helmet com CSP em produção (desabilitada em dev para Swagger UI). CORS registrado na construção da app.
+- `TRUST_PROXY` configurável via env atrás de reverse proxy (afeta `request.ip` e rate limit).
+- Emails normalizados para lowercase para evitar duplicatas por maiúsculas/minúsculas.
+- Login com comparação em tempo constante para reduzir enumeração de usuários.
+- Registro com insert e tratamento de violação de unicidade (409 Conflict).
+- Endpoint `/me` consulta o banco para dados atualizados; rejeita tokens de usuários removidos.
+- Seed bloqueado em produção.
 
 ## Docker
 
-- `docker-compose.yml` constrói `DATABASE_URL` automaticamente a partir de `POSTGRES_USER`, `POSTGRES_PASSWORD` e `POSTGRES_DB` com hostname interno `db`.
-- Migrations rodam automaticamente no startup por padrão (`RUN_MIGRATIONS_ON_STARTUP=true`). Desabilitar em produção.
-- `./deploy.sh --build` sobe app + banco. `./deploy.sh --db-only` sobe apenas o banco para desenvolvimento local.
+- O `docker-compose.yml` monta `DATABASE_URL` a partir de `POSTGRES_USER`, `POSTGRES_PASSWORD` e `POSTGRES_DB` com hostname interno `db`.
+- Por padrão o PostgreSQL não expõe porta no host; `docker-compose.development.yml` adiciona `127.0.0.1:5432` e `ENABLE_DOCS=true` no serviço `app`. Uso típico: `pnpm docker:up` (seguro por padrão) ou `pnpm docker:up:dev` (desenvolvimento com banco em localhost).
+- No `docker-compose.yml`, `RUN_MIGRATIONS_ON_STARTUP` e `ENABLE_DOCS` são fixos no YAML (`true` e `false`) no serviço `app`. Em produção real, desative migrations na subida do container.
+- `./deploy.sh --build` sobe app e banco sem expor o Postgres; `./deploy.sh --build --dev` ou `./deploy.sh --db-only` expõem o banco em localhost.
 
-## Testing
+## Testes
 
-- Jest com testes em `test/`.
+- Jest em `test/`.
 - Setup global em `test/setup.ts`.
-- Testes HTTP usando `app.inject()`.
-- `pnpm test` sobe container Postgres efêmero automaticamente via `scripts/run-tests.ts` (requer Docker).
-- CI via GitHub Actions (`.github/workflows/ci.yml`): lint, test e audit em paralelo.
+- Testes HTTP com `app.inject()`.
+- `pnpm test` sobe Postgres efêmero via `scripts/run-tests.ts` (requer Docker).
+- CI no GitHub Actions (`.github/workflows/ci.yml`): lint, test, audit e validação/build Docker em paralelo.
